@@ -414,7 +414,7 @@ compileInstr instr = case instr of
   IBinOp op x' y' -> do
     x <- compileExpr x'
     y <- compileExpr y'
-    (:[]) <$> compileBinOp op x y
+    (:[]) <$> compileBinOp op x y (getIType x')
   IUnOp  op x -> (:[]) <$> (compileUnOp  op =<< compileExpr x)
   ISelect  p' x' y' -> (:[]) <$> do
     x <- compileExpr x'
@@ -605,13 +605,25 @@ compileUnOp op x = case op of
   BNot            -> emitInstr boolTy $ L.Xor x (i8Lit 1) []
   _               -> unaryIntrinsic op x
 
-compileBinOp :: LLVMBuilder m => BinOp -> Operand -> Operand -> m Operand
-compileBinOp op x y = case op of
+isUnsigned :: BaseType -> Bool
+isUnsigned ty = case ty of
+  Scalar Word8Type  -> True
+  Scalar Word32Type -> True
+  Scalar Word64Type -> True
+  Vector _ sbt      -> isUnsigned (Scalar sbt)
+  _                 -> False
+
+compileBinOp :: LLVMBuilder m => BinOp -> Operand -> Operand -> BaseType -> m Operand
+compileBinOp op x y baseTy = case op of
   IAdd   -> emitInstr (typeOf x) $ L.Add False False x y []
   ISub   -> emitInstr (typeOf x) $ L.Sub False False x y []
   IMul   -> emitInstr (typeOf x) $ L.Mul False False x y []
-  IDiv   -> emitInstr (typeOf x) $ L.SDiv False x y []
-  IRem   -> emitInstr (typeOf x) $ L.SRem x y []
+  IDiv   -> emitInstr (typeOf x) $ if isUnsigned baseTy
+                                     then L.UDiv False x y []
+                                     else L.SDiv False x y []
+  IRem   -> emitInstr (typeOf x) $ if isUnsigned baseTy
+                                     then L.URem x y []
+                                     else L.SRem x y []
   FPow   -> binaryIntrinsic FPow x y
   FAdd   -> emitInstr (typeOf x) $ L.FAdd mathFlags x y []
   FSub   -> emitInstr (typeOf x) $ L.FSub mathFlags x y []
