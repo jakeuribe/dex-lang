@@ -100,3 +100,71 @@
 - **Verified**: Yes. Crash occurs at three points: `Builder.hs:861-874` (missing tangent type), `Linearize.hs:599` (unimplemented sum constructor linearization), `Linearize.hs:399` (active sum scrutinees not handled).
 - **Root cause**: Sum types are **discrete choices**, not continuous values. The AD system has no mathematical framework for differentiating through discrete branches.
 - **Why too deep**: Fixing this requires either (a) a new mathematical framework for sum-type differentiation, (b) control-flow-dependent AD (fundamentally incompatible with current reverse-mode design), or (c) symbolic gradients (major redesign). Estimated at **60-100+ hours** of work. This is a **fundamental limitation** of the AD architecture, not a simple bug.
+
+---
+
+## PR Investigation & Fixes (Phase 2)
+
+> 8 open PRs from google-research/dex-lang investigated in parallel.
+> Each was assessed for triviality, applicability, and reversibility.
+
+### PR Triage Summary
+
+| PR | Description | Size | Verdict | Branch | Status |
+|----|-------------|------|---------|--------|--------|
+| **#1343** | Fix debug build missing import | 1 file, 3 lines | **Trivial** | `claude/fix-pr1343-debug-import-Z1mCt` | **Fixed & pushed** |
+| **#1342** | Fix dex.cabal after TypeScript | 1 file, 1 line | **Trivial** | `claude/fix-pr1342-cabal-typescript-Z1mCt` | **Fixed & pushed** |
+| **#1348** | Sets library syntax updates | 2 files, ~12 changes | **Small multi-change** | `claude/fix-pr1348-set-syntax-Z1mCt` | **Fixed & pushed** |
+| **#1347** | FFT library syntax updates | 2 files, ~27 changes | **Small multi-change** | `claude/fix-pr1347-fft-syntax-Z1mCt` | **Fixed & pushed** |
+| **#692** | CI parallel test execution | 1 file, 13 lines | **Moderate** | `claude/fix-pr692-parallel-ci-Z1mCt` | **Fixed & pushed** |
+| **#1344** | Implement erfinv | 3 files, 149 lines | Not trivial | — | **Skipped** |
+| **#1335** | Add multisets | 7 commits, new feature | Not trivial | — | **Skipped** |
+| **#397** | Make print polymorphic | Old, likely stale | Not applicable | — | **Skipped** |
+
+**5 fixed, 3 skipped as not trivial.**
+
+### PR Fix 1: #1343 — Debug build missing import
+- **Branch**: `claude/fix-pr1343-debug-import-Z1mCt`
+- **File**: `src/lib/Err.hs`
+- **Problem**: `unsafePerformIO` is used inside `#ifdef DEX_DEBUG` (line 485) but `System.IO.Unsafe` is never imported. This breaks debug builds and CI (since `DEX_CI` enables `DEX_DEBUG`).
+- **Fix**: Added conditional import `#ifdef DEX_DEBUG` / `import System.IO.Unsafe` / `#endif` after existing GHC imports.
+- **Reversibility**: Trivial — remove 3 lines.
+
+### PR Fix 2: #1342 — dex.cabal missing TypeScript source
+- **Branch**: `claude/fix-pr1342-cabal-typescript-Z1mCt`
+- **File**: `dex.cabal`
+- **Problem**: After the TypeScript switch (commit 5b2df9b), `static/index.ts` is the source file but wasn't listed in `data-files`. The generated `static/index.js` is gitignored.
+- **Fix**: Added `static/index.ts` to the `data-files` list so source distributions include the TypeScript source.
+- **Reversibility**: Trivial — remove 1 line.
+
+### PR Fix 3: #1348 — Sets library syntax updates
+- **Branch**: `claude/fix-pr1348-set-syntax-Z1mCt`
+- **Files**: `lib/set.dx`, `tests/set-tests.dx`
+- **Problem**: After the syntax modernization, `set.dx` needed explicit `a:Type` constraints (new type inference is forward-only), and `set-tests.dx` still used `--` comments instead of `#`.
+- **Fix**: Added `a:Type` to `last`, `first`, `all_except_last`; used `Fin` directly; reordered `reduce` args; added lambda type annotation; fixed comment syntax in tests.
+- **Reversibility**: Easy — each change is a small, local edit.
+
+### PR Fix 4: #1347 — FFT library syntax updates
+- **Branch**: `claude/fix-pr1347-fft-syntax-Z1mCt`
+- **Files**: `lib/fft.dx`, `tests/fft-tests.dx`
+- **Problem**: After the syntax modernization, `fft.dx` needed explicit type annotations. The new type inference is "forward-only and very local" — `for` loops can't infer index types from usage, unlike `each` which takes the table argument first.
+- **Fix**: Added `a:Type` constraints; explicit index types on `for` loops; `(zero::Complex)` casts; `each` instead of `map` in tests.
+- **Reversibility**: Easy — each change is a small, local edit.
+
+### PR Fix 5: #692 — CI parallel test execution
+- **Branch**: `claude/fix-pr692-parallel-ci-Z1mCt`
+- **File**: `.github/workflows/haskell-ci.yaml`
+- **Problem**: Tests run sequentially in CI, wasting available CPU cores on GitHub Actions runners (2 cores Linux/Windows, 3 cores Mac).
+- **Fix**: Added "Retrieve core count" step that detects logical CPUs and passes `-j<count>` to `make tests`.
+- **Reversibility**: Easy — remove the step and revert the `-j` flag.
+
+### Skipped PRs
+
+#### #1344 — Implement erfinv (149 lines, 3 files)
+Not a one-two liner. Adds the inverse error function with polynomial Chebyshev approximations across three domains for both Float32 and Float64. Requires adding `erfinv` to the `Floating` interface, implementing polynomial evaluation helpers, and adding instances for Complex and array types.
+
+#### #1335 — Add multisets (7 commits, new feature)
+Introduces a new data structure (`Multiset`) with supporting utilities (`arg_sort`, index set expansions). Touches prelude, parser, sort, and test files. Not trivial.
+
+#### #397 — Make print polymorphic (very old)
+From 2020, targets an older version of the codebase. The `print` function and `Show` typeclass have changed significantly since then. Not applicable to the current codebase.
