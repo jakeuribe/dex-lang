@@ -57,6 +57,18 @@ jobs:
       run: rm -rf ~/.stack/setup-exe-cache
       if: runner.os == 'macOS'
 
+    - name: Retrieve core count
+      id: cpuinfo
+      run: |
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          cpu_count=$(lscpu | grep "^CPU(s):" | grep -o "[0-9]*$")
+        elif [[ "$OSTYPE" == "darwin"* ]]; then
+          cpu_count=$(sysctl -n hw.logicalcpu)
+        else
+          cpu_count=1
+        fi
+        echo "cpu_count=$cpu_count" >> $GITHUB_OUTPUT
+
     - name: Build, treating warnings as errors
       run: make build-ci
       if: runner.os == 'Linux'
@@ -65,4 +77,4 @@ jobs:
       run: make build
 
     - name: Run tests
-      run: make tests
+      run: make tests -j${{ steps.cpuinfo.outputs.cpu_count }}
