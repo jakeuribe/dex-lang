@@ -16,6 +16,7 @@ build-type:          Simple
 data-files:          lib/*.dx
                    , static/dynamic.html
                    , static/index.js
+                   , static/index.ts
                    , static/style.css
                    , src/lib/dexrt.bc
 
