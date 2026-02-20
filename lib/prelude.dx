@@ -1258,15 +1258,15 @@ instance Floating(n=>a) given (a|Floating, n|Ix)
 def scan(
     init:c,
     xs: n=>a,
-    body:(n, a, c)->(b, c)
-    ) -> (n=>b, c)  given (a:Type, b:Type, c|Data, n|Ix) =
+    body:(n, a, c)->{|eff} (b, c)
+    ) -> {|eff} (n=>b, c)  given (a:Type, b:Type, c|Data, n|Ix, eff:Effects) =
   run_state(init) \ref. for i:n.
     carry = get ref
     (y, carry') = body(i, xs[i], carry)
     ref := carry'
     y
 
-def fold(init:c, xs:n=>a, body:(n, a, c)-> c) -> c  given (a:Type, n|Ix, c|Data) =
+def fold(init:c, xs:n=>a, body:(n, a, c)->{|eff} c) -> {|eff} c  given (a:Type, n|Ix, c|Data, eff:Effects) =
   snd $ scan(init, xs) \i x carry. ((), body(i, x, carry))
 
 # `combine` should be a commutative and associative, and form a
