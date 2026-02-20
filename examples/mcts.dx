@@ -18,7 +18,7 @@ ROLLOUTS_PER_SAMPLE:Nat = 10
 
 ' ## Tree types
 
-data Node(node_ix, a) =
+enum Node(node_ix, a) =
   Branch(content:a, parent:(Maybe node_ix), children:(List (node_ix)))
 
 def Tree(node_ix|Ix, a:Type) -> Type =

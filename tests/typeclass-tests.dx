@@ -54,7 +54,7 @@ instance InterfaceTest4(Float)
   foo = 1
   def bar(_) = 1
 
--------------------- Diamond superclasses --------------------
+#------------------ Diamond superclasses --------------------
 
 interface A(a)
   a_ : (a) -> Int
@@ -63,12 +63,12 @@ interface B(a|A)
 interface C(a|A)
   c_ : (Int)
 
--- Diamond superclasses should be ok
+# Diamond superclasses should be ok
 def f1(x: a) -> Int given (a|B|C) = a_ x
--- Multiple binders are ok too
+# Multiple binders are ok too
 def f2(x: a) -> Int given (a|A|A) = a_ x
 
--------------------- Transitive superclasses --------------------
+#------------------ Transitive superclasses --------------------
 
 interface D(a)
   d_ : (a) -> Int
@@ -86,9 +86,9 @@ instance F(Int)
 def deriveDFromE(x:a) -> Int given (a|E) = d_ x
 def deriveDFromF(x:a) -> Int given (a|F) = d_ x
 
--------------------- Overlapping instances --------------------
+#------------------ Overlapping instances --------------------
 
--- Overlapping instances
+# Overlapping instances
 instance A(Int)
   def a_(x) = 1
 instance A(n=>a) given (a|A, n|Ix)
@@ -96,22 +96,22 @@ instance A(n=>a) given (a|A, n|Ix)
 instance A(n=>Int) given (n|Ix)
   def a_(x) = 0
 
--- There are two derivations for n=>Int
+# There are two derivations for n=>Int
 def f3(x: n=>Int) -> Int given (n|Ix) = a_ x
 > Type error:Multiple candidate class dictionaries for: (A (n => Int32))
 >
 > def f3(x: n=>Int) -> Int given (n|Ix) = a_ x
 >                                         ^^^^
--- Adding an explicit binder shouldn't change anything
+# Adding an explicit binder shouldn't change anything
 def f4(x: n=>Int) -> Int given (n|Ix) (A (n=>Int)) = a_ x
 > Type error:Multiple candidate class dictionaries for: (A (n => Int32))
 >
 > def f4(x: n=>Int) -> Int given (n|Ix) (A (n=>Int)) = a_ x
 >                                                      ^^^^
 
--- TODO: This should fail! The choice of dictionary depends on instantiation
---       of a (there's a generic one and a specific one for n=>Int)!
---       This is reported in #669.
+# TODO: This should fail! The choice of dictionary depends on instantiation
+#       of a (there's a generic one and a specific one for n=>Int)!
+#       This is reported in #669.
 def f5(x : n=>a) -> Int given (n|Ix, a|A) = a_ x
 
 interface Eq'(a)
@@ -126,12 +126,12 @@ instance Eq'(n=>a) given (n|Ix, a|Eq')
 instance Ord'(n=>a) given (n|Ix, a|Ord')
   def ord(_) = 4
 
--- Simplifiable constraints should be accepted
+# Simplifiable constraints should be accepted
 def f6(x : n=>Int) -> Int given (n|Ix) (Eq'  (n=>Int))= eq x
 def f7(x : n=>Int) -> Int given (n|Ix) (Ord' (n=>Int)) = eq x
 
--- This additional instance makes f7 ambiguous. Note that there's an easy way out
--- in the form of the superclass of Ord', but we still check that there's no overlap.
+# This additional instance makes f7 ambiguous. Note that there's an easy way out
+# in the form of the superclass of Ord', but we still check that there's no overlap.
 instance Eq'(Int)
   def eq(_) = 0
 def f8(x : n=>Int) -> Int given (n|Ix) (Ord' (n=>Int))  = eq x
@@ -140,25 +140,25 @@ def f8(x : n=>Int) -> Int given (n|Ix) (Ord' (n=>Int))  = eq x
 > def f8(x : n=>Int) -> Int given (n|Ix) (Ord' (n=>Int))  = eq x
 >                                                           ^^^^
 
--- XXX: In Haskell overlap is determined entirely by instance heads, making it
---      independent of other instances in scope. In Dex an instance might be ruled out,
---      because at some point its constraints are unsatisfiable, but later on it
---      might become viable. How big of an issue is that??
+# XXX: In Haskell overlap is determined entirely by instance heads, making it
+#      independent of other instances in scope. In Dex an instance might be ruled out,
+#      because at some point its constraints are unsatisfiable, but later on it
+#      might become viable. How big of an issue is that??
 
--------------------- Multi-parameter interfaces --------------------
+#------------------ Multi-parameter interfaces --------------------
 
--- Adapted from PR 1039
+# Adapted from PR 1039
 interface MyDist(d, a)
   log_pdf : (d, a) -> Float
 
 interface MyOrderedDist(d, a, given () (MyDist d a))
   log_cdf : (d, a) -> Float
 
--- TODO: Test actually using it.
+# TODO: Test actually using it.
 
--------------------- User-defined Ix --------------------
+#------------------ User-defined Ix --------------------
 
-data TwoPoints =
+enum TwoPoints =
   FirstPoint
   SecondPoint
 
@@ -174,11 +174,11 @@ instance Ix(TwoPoints)
 :p for i:TwoPoints. i
 > [FirstPoint, SecondPoint]
 
------------------ User-defined Ix referencing toplevel data -----------------
+#--------------- User-defined Ix referencing toplevel data -----------------
 
--- This is a regression test for Issue #930.
+# This is a regression test for Issue #930.
 
-data TwoMorePoints =
+enum TwoMorePoints =
   APoint
   AnotherPoint
 
@@ -194,7 +194,7 @@ instance Ix(TwoMorePoints)
 :p for i:TwoMorePoints. ordinal i
 > [0, 1]
 
------------------ Data constraint synthesis -----------------
+#--------------- Data constraint synthesis -----------------
 
 def data_id(x:a) -> a given (a|Data) = x
 
@@ -222,7 +222,7 @@ data_id [4, 5, 6]
 data_id (the (n:Nat &> (Fin n) => Nat) (3 ,> [5, 6, 7]))
 > (3 ,> [5, 6, 7])
 
------------------ Lambda function taking class arguments -----------------
+#--------------- Lambda function taking class arguments -----------------
 
 :t \(given (a|Ix, b|Ix) (Subset a b)) (xs:a=>Float). xs[0@_]
 > ({a:Type}[d:(Ix a)]{b:Type}[d.1:(Ix b),v#0:(Subset a b)](xs:(a

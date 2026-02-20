@@ -6,8 +6,8 @@ def standalone_sum(xs:n=>v) -> v given (n|Ix, v|Add) =
 vec3 = [1,2,3]
 vec2 = [4,5]
 
--- TODO: test that we only get one copy inlined (hard to without dumping IR
--- until we have logging for that sort of thing)
+# TODO: test that we only get one copy inlined (hard to without dumping IR
+# until we have logging for that sort of thing)
 :p standalone_sum vec2 + standalone_sum vec3
 > 15
 

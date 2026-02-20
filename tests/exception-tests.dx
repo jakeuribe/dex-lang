@@ -41,7 +41,7 @@ def checkFloatInUnitInterval(x:Float) -> {Except} Float =
       else 23
 > (Just [23, 23, 23])
 
--- Is this the result we want?
+# Is this the result we want?
 :p yield_state zero \ref.
      catch \.
        for i:(Fin 6).
@@ -58,7 +58,7 @@ def checkFloatInUnitInterval(x:Float) -> {Except} Float =
        ref := 2
 > Nothing
 
--- https://github.com/google-research/dex-lang/issues/612
+# https://github.com/google-research/dex-lang/issues/612
 def sashabug(h: ()) -> {Except} List Int =
   yield_state mempty \results.
       results := (get results) <> AsList 1 [2]

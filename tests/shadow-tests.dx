@@ -1,5 +1,5 @@
 
--- repeated vars in patterns not allowed
+# repeated vars in patterns not allowed
 :p
   (x, x) = (1, 1)
   x
@@ -18,19 +18,19 @@
 >     (x, x) = p
 >         ^
 
--- TODO: re-enable if we choose to allow non-peer shadowing
--- -- shouldn't cause error even though it shadows x elsewhere
--- x = 50
+# TODO: re-enable if we choose to allow non-peer shadowing
+# -- shouldn't cause error even though it shadows x elsewhere
+# x = 50
 
--- :p let x = 100 in (let x = 200 in x)
+# :p let x = 100 in (let x = 200 in x)
 
--- > [200]
+# > [200]
 
 arr = 10
 
--- TODO: enable when we handle this case
--- _ = 10
--- _ = 10 -- underscore shadows allowed
+# TODO: enable when we handle this case
+# _ = 10
+# _ = 10 -- underscore shadows allowed
 
 arr = 20
 > Error: variable already defined: arr
@@ -47,7 +47,7 @@ arr = 20
 > :p arr
 >    ^^^
 
--- testing top-level shadowing
+# testing top-level shadowing
 f : (given (a:Type), a) -> a = \x. x
 
 x = 1
@@ -71,20 +71,20 @@ x = 1
    w
 > 4
 
--- Testing data shadowing
-data Shadow = Shadow
+# Testing data shadowing
+enum Shadow = Shadow
 > Error: variable already defined: Shadow
 
-data Shadow2 =
+enum Shadow2 =
   Shadow1(Int)
   Shadow1
 > Error: variable already defined: Shadow1
 
 ShadowCon = 1
-data Shadow3 = ShadowCon
+enum Shadow3 = ShadowCon
 > Error: variable already defined: ShadowCon
 
-data Shadow4 = ShadowCon'
+enum Shadow4 = ShadowCon'
 ShadowCon' = 1
 > Error: variable already defined: ShadowCon'
 >

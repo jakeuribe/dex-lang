@@ -1,5 +1,5 @@
 
--- TODO: use prelude sum instead once we can differentiate state effect
+# TODO: use prelude sum instead once we can differentiate state effect
 def sum'(xs:n=>Float) -> Float given (n|Ix) =
   yield_accum (AddMonoid Float) \ref. for i. ref += xs[i]
 
@@ -133,17 +133,17 @@ def sum'(xs:n=>Float) -> Float given (n|Ix) =
 :p check_deriv sqrt 4.0
 > True
 
--- badDerivFun : Float -> Float
--- badDerivFun x = x
+# badDerivFun : Float -> Float
+# badDerivFun x = x
 
--- badDerivFun#lin : Float -> (Float, Float -> Float)
--- badDerivFun#lin x = (x, llam t. 2. * t)
+# badDerivFun#lin : Float -> (Float, Float -> Float)
+# badDerivFun#lin x = (x, llam t. 2. * t)
 
--- :p checkDeriv badDerivFun 1.0
--- > False
+# :p checkDeriv badDerivFun 1.0
+# > False
 
--- Perturbation confusion test suggested by Barak Pearlmutter
--- https://github.com/HIPS/autograd/issues/4
+# Perturbation confusion test suggested by Barak Pearlmutter
+# https://github.com/HIPS/autograd/issues/4
 :p deriv (\x. x * deriv (\y. x * y) 2.0) 1.0
 > 2.
 
@@ -256,28 +256,28 @@ vec = [1.]
   check_deriv f 2.0
 > True
 
--- :p
---   f = \rec.
---     ({x=x, y=y, z=z}) = rec
---     x * y * i_to_f z
---   (check_deriv (\x. f {x=x, y=4.0, z=5}) 2.0, check_deriv (\y. f {x=2.0, y=y, z=5}) 4.0)
--- > (True, True)
+# :p
+#   f = \rec.
+#     ({x=x, y=y, z=z}) = rec
+#     x * y * i_to_f z
+#   (check_deriv (\x. f {x=x, y=4.0, z=5}) 2.0, check_deriv (\y. f {x=2.0, y=y, z=5}) 4.0)
+# > (True, True)
 
--- TODO: Re-enable once the big PR is merged
--- :p
---   f = \x.
---     y = for i:(Fin 10). { x=x * (IToF $ ordinal i) }
---     z = for i.
---       ({ x=x, ... }) = y.i
---       x
---     sum' z
---   checkDeriv f 1.0
--- > True
+# TODO: Re-enable once the big PR is merged
+# :p
+#   f = \x.
+#     y = for i:(Fin 10). { x=x * (IToF $ ordinal i) }
+#     z = for i.
+#       ({ x=x, ... }) = y.i
+#       x
+#     sum' z
+#   checkDeriv f 1.0
+# > True
 
--- :p
---   f = \x. for i:(Fin 4). { x=x * x * (n_to_f $ ordinal i) }
---   jvp f 2.0 1.0
--- > [{x = 0.}, {x = 4.}, {x = 8.}, {x = 12.}]
+# :p
+#   f = \x. for i:(Fin 4). { x=x * x * (n_to_f $ ordinal i) }
+#   jvp f 2.0 1.0
+# > [{x = 0.}, {x = 4.}, {x = 8.}, {x = 12.}]
 
 :p
   f = \x. max(0.0, x)
@@ -300,7 +300,7 @@ vec = [1.]
   check_deriv f 1.0
 > True
 
--- Test reference indexing
+# Test reference indexing
 :p
   f = \x.
     i = unsafe_from_ordinal(n=Fin 3, 0)
@@ -310,7 +310,7 @@ vec = [1.]
   check_deriv f 1.0
 > True
 
--- Regression test for bug #841, linearization through triangular table
+# Regression test for bug #841, linearization through triangular table
 func = \x:Float.
   table = for i:(Fin 2). for j:(..i). x
   tmp = (0 @ (Fin 2))
@@ -319,7 +319,7 @@ func = \x:Float.
 snd(linearize func 1.0)(2.0)
 > 2.
 
--- Nested AD, examples from #713
+# Nested AD, examples from #713
 def func2(x:m=>Float) -> Float given (m|Ix) =
     exp (0.5 * sum for i. sq x[i])
 
@@ -331,29 +331,29 @@ v = [0.2, 0.3, 0.4]
 func2 x ~~ 1.072508
 > True
 
--- analytic
+# analytic
 result = hvpf x v
 result ~~ [0.235952, 0.364653, 0.493354]
 > True
 
--- finite diff over reverse
+# finite diff over reverse
 eps = 0.0001
 (grad func2 (x + eps .* v) - grad func2 x) / eps ~~ [0.235885, 0.364631, 0.493228]
 > True
 
--- reverse over forward
+# reverse over forward
 grad (\x. jvp func2 x v) x ~~ result
 > True
 
--- reverse over reverse
+# reverse over reverse
 grad (\x. dot (grad func2 x) v) x ~~ result
 > True
 
--- forward over reverse
+# forward over reverse
 jvp (\x. grad func2 x) x v ~~ result
 > True
 
--- Regression test for bug #848, AD through state effect over case
+# Regression test for bug #848, AD through state effect over case
 def min'(a:Float, b:Float) -> Float =
   yield_state a \s.
     best = get s
@@ -366,7 +366,7 @@ grad (\x . (min' x (x+1))) 1.0
 grad (\x . [x][argmin [x]]) 1.0
 > 1.
 
--------------------- Custom linearization --------------------
+#------------------ Custom linearization --------------------
 
 @noinline
 f = \x:Float. x * 2
@@ -380,7 +380,7 @@ deriv (\x. f (x * 2) * 5) 1.0
 deriv f 1.0
 > 4.
 
--- Custom derivative is preserved even when we defunctionalize for
+# Custom derivative is preserved even when we defunctionalize for
 flip deriv 1.0 \x:Float.
   farr = for i:(Fin 5). f
   farr[unsafe_from_ordinal 1] x
@@ -389,7 +389,7 @@ flip deriv 1.0 \x:Float.
 > flip deriv 1.0 \x:Float.
 > ^^^^^
 
--- Custom derivative is preserved even when we defunctionalize case
+# Custom derivative is preserved even when we defunctionalize case
 (\x f. deriv f x) 1.0 \x:Float.
   total = sum $ for i:(Fin 10). ordinal i
   f2 = case total > 10 of
@@ -412,7 +412,7 @@ custom-linearization g \x. (g x, g x)
 >
 > ((x.1:(Float32, Float32)) -> ((Float32, Float32), (Float32, Float32)))
 
-data IHaveNoTangentType = MkIHaveNoTangentType
+enum IHaveNoTangentType = MkIHaveNoTangentType
 
 @noinline
 noInputTangent = \x:IHaveNoTangentType. 2.0
@@ -426,7 +426,7 @@ noOutputTangent = \x:Float. MkIHaveNoTangentType
 custom-linearization noOutputTangent \x. (noOutputTangent x, 0.0)
 > Type error:No tangent type for: IHaveNoTangentType
 
--- Functions of multiple arguments should be supported
+# Functions of multiple arguments should be supported
 @noinline
 h = \x:Float y:Float. x * 2 + y
 hLin = \x y. (h x y, \xt:Float yt:Float. xt + yt)
@@ -436,7 +436,7 @@ custom-linearization h hLin
 deriv (\x. h x x) 1.0 == deriv (\x. x + x) 1.0
 > True
 
--- Index-polymorphic custom linearization
+# Index-polymorphic custom linearization
 @noinline
 def w(x:n=>Float) -> n=>Float given (n|Ix) = 2 .* x
 def wLin(x:n=>Float) -> (n=>Float, (n=>Float) -> n=>Float) given (n|Ix) =
@@ -450,7 +450,7 @@ jvp (\x. w x) [1.0, 1.0] [1.0, 0.0]
 jvp w [1.0, 1.0] [1.0, 0.0]
 > [4., 0.]
 
------- standalone functions ------
+#---- standalone functions ------
 
 @noinline
 def xy2(x:Float, y:Float) -> Float =
@@ -465,7 +465,7 @@ def xy2(x:Float, y:Float) -> Float =
 :p check_deriv (\x. xy2 5.0 x) 2.0
 > True
 
------- Symbolic tangents ------
+#---- Symbolic tangents ------
 
 def ST(a) = SymbolicTangent(a)
 
@@ -491,20 +491,20 @@ custom-linearization q qLin
 
 custom-linearization-symbolic q qLin
 
--- Incorrect derivative, based on the ZeroTangent branch
+# Incorrect derivative, based on the ZeroTangent branch
 deriv (\x. q x 1.0) 1.0
 > 4.
 
--- Correct derivative, based on the SomeTangent branch
+# Correct derivative, based on the SomeTangent branch
 deriv (\x. q x x) 1.0
 > 3.
 
------- Check custom linearization of matmul ------
+#---- Check custom linearization of matmul ------
 
 amat = for i:(Fin 100) j:(Fin 100). n_to_f $ ordinal (i, j)
 
--- The derivative of matmul should give the same answers as a direct
--- matmul (this checks that the custom derivative is not too busted).
+# The derivative of matmul should give the same answers as a direct
+# matmul (this checks that the custom derivative is not too busted).
 
 def mmp'(m1:l=>m=>Float, m2:m=>n=>Float) -> l=>n=>Float given (l|Ix, m|Ix, n|Ix) =
   jvp (\m. m1 ** m) m2 m2
@@ -512,7 +512,7 @@ def mmp'(m1:l=>m=>Float, m2:m=>n=>Float) -> l=>n=>Float given (l|Ix, m|Ix, n|Ix)
 :p mmp'(amat, amat) ~~ naive_matmul(amat, amat)
 > True
 
--- Let's check the other orientation too
+# Let's check the other orientation too
 
 def mmp''(m1:l=>m=>Float, m2:m=>n=>Float) -> l=>n=>Float given (l|Ix, m|Ix, n|Ix) =
   jvp (\m. m ** m2) m1 m1

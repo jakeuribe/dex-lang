@@ -5,50 +5,50 @@ improve things by recording source information when we create fresh inference
 variables. Solving fully (insisting on no ambiguity) at each decl might also
 help make the errors more local.
 
--- :t \x. x
--- > Type error:Ambiguous type variables: [?]
--- >
--- > ((_ans_ @> _ans_), [_ans_:(?->?) = \x:?. x])
+# :t \x. x
+# > Type error:Ambiguous type variables: [?]
+# >
+# > ((_ans_ @> _ans_), [_ans_:(?->?) = \x:?. x])
 
--- :t \x. sum for i. x.i
--- > Type error:Ambiguous type variables: [?3]
--- >
--- > ( (_ans_ @> _ans_)
--- > , [ _ans_:((?3=>Float)->Float) = \x:(?3=>Float).
--- >   tmp:((?3=>Float)->Float) = (sum) (?3)
--- >   tmp1:(?3=>Float) = for \i:?3. (x) (i)
--- >   (tmp) (tmp1) ] )
+# :t \x. sum for i. x.i
+# > Type error:Ambiguous type variables: [?3]
+# >
+# > ( (_ans_ @> _ans_)
+# > , [ _ans_:((?3=>Float)->Float) = \x:(?3=>Float).
+# >   tmp:((?3=>Float)->Float) = (sum) (?3)
+# >   tmp1:(?3=>Float) = for \i:?3. (x) (i)
+# >   (tmp) (tmp1) ] )
 
--- :t \f x y. f y x
--- > Type error:Ambiguous type variables: [?3, ?6, ?7]
--- >
--- > ( (_ans_ @> _ans_)
--- > , [ _ans_:((?3->(?6->?7))->(?6->(?3->?7))) = \f:(?3->(?6->?7)). \x:?6. \y:?3.
--- >   tmp:(?6->?7) = (f) (y)
--- >   (tmp) (x) ] )
+# :t \f x y. f y x
+# > Type error:Ambiguous type variables: [?3, ?6, ?7]
+# >
+# > ( (_ans_ @> _ans_)
+# > , [ _ans_:((?3->(?6->?7))->(?6->(?3->?7))) = \f:(?3->(?6->?7)). \x:?6. \y:?3.
+# >   tmp:(?6->?7) = (f) (y)
+# >   (tmp) (x) ] )
 
--- :t \x. for i j. x.j.i
--- > Type error:Ambiguous type variables: [?3, ?6, ?7]
--- >
--- > ( (_ans_ @> _ans_)
--- > , [ _ans_:((?3=>(?6=>?7))->(?6=>(?3=>?7))) = \x:(?3=>(?6=>?7)). for \i:?6. for \j:?3.
--- >   tmp1:(?6=>?7) = (x) (j)
--- >   (tmp1) (i) ] )
+# :t \x. for i j. x.j.i
+# > Type error:Ambiguous type variables: [?3, ?6, ?7]
+# >
+# > ( (_ans_ @> _ans_)
+# > , [ _ans_:((?3=>(?6=>?7))->(?6=>(?3=>?7))) = \x:(?3=>(?6=>?7)). for \i:?6. for \j:?3.
+# >   tmp1:(?6=>?7) = (x) (j)
+# >   (tmp1) (i) ] )
 
--- :t \f x. f x
--- > Type error:Ambiguous type variables: [?2, ?3]
--- >
--- > ((_ans_ @> _ans_), [_ans_:((?2->?3)->(?2->?3)) = \f:(?2->?3). \x:?2. (f) (x)])
+# :t \f x. f x
+# > Type error:Ambiguous type variables: [?2, ?3]
+# >
+# > ((_ans_ @> _ans_), [_ans_:((?2->?3)->(?2->?3)) = \f:(?2->?3). \x:?2. (f) (x)])
 
--- :t \x. for (i,j). x.i.j
--- > Type error:Ambiguous type variables: [?4, ?7, ?8]
--- >
--- > ( (_ans_ @> _ans_)
--- > , [ _ans_:((?4=>(?7=>?8))->((?4 & ?7)=>?8)) = \x:(?4=>(?7=>?8)). for \pat:(?4 & ?7).
--- >   tmp1:?4 = %fst pat
--- >   tmp2:?7 = %snd pat
--- >   tmp3:(?7=>?8) = (x) (tmp1)
--- >   (tmp3) (tmp2) ] )
+# :t \x. for (i,j). x.i.j
+# > Type error:Ambiguous type variables: [?4, ?7, ?8]
+# >
+# > ( (_ans_ @> _ans_)
+# > , [ _ans_:((?4=>(?7=>?8))->((?4 & ?7)=>?8)) = \x:(?4=>(?7=>?8)). for \pat:(?4 & ?7).
+# >   tmp1:?4 = %fst pat
+# >   tmp2:?7 = %snd pat
+# >   tmp3:(?7=>?8) = (x) (tmp1)
+# >   (tmp3) (tmp2) ] )
 
 :t
    myid : (given (a:Type), a) -> a = \x. x
@@ -152,7 +152,7 @@ MyPair : (Type) -> Type =
 > ((1, 2), (1., 2.))
 
 
--- TODO: put source annotation on effect for a better message here
+# TODO: put source annotation on effect for a better message here
 def fEff() -> {|a} a given (a) = todo
 > Type error:
 > Expected: Type
@@ -168,39 +168,39 @@ def fEff() -> {|a} a given (a) = todo
 >     for i:(Fin 7). sum for j:(Fin unboundName). 1.0
 >                                   ^^^^^^^^^^^
 
--- differentCaseResultTypes : Either Int Float -> Float
--- differentCaseResultTypes x = case x
---   Left f -> f
---   Right i -> i
--- > Type error:
--- > Expected: Int
--- >   Actual: Float
--- > In: i
--- >
--- >   Right i -> i
--- >              ^
+# differentCaseResultTypes : Either Int Float -> Float
+# differentCaseResultTypes x = case x
+#   Left f -> f
+#   Right i -> i
+# > Type error:
+# > Expected: Int
+# >   Actual: Float
+# > In: i
+# >
+# >   Right i -> i
+# >              ^
 
--- inferEither x = case x
---     Left i -> i + 1
---     Right f -> floor f
+# inferEither x = case x
+#     Left i -> i + 1
+#     Right f -> floor f
 
--- caseEffects : wRef:(Ref Float) -> (Either Int Float) -> {Writer wRef} ()
--- caseEffects ref x = case x
---     Left  i -> ()
---     Right r -> ref := r
--- > Type error:
--- > Expected: { }
--- >   Actual: {State ref | ?_28}
--- > In: (ref := r)
--- >
--- >     Right r -> ref := r
--- >                    ^^^
+# caseEffects : wRef:(Ref Float) -> (Either Int Float) -> {Writer wRef} ()
+# caseEffects ref x = case x
+#     Left  i -> ()
+#     Right r -> ref := r
+# > Type error:
+# > Expected: { }
+# >   Actual: {State ref | ?_28}
+# > In: (ref := r)
+# >
+# >     Right r -> ref := r
+# >                    ^^^
 
--- :p (\(u,v). for i:0...u. 1.0) (2, 3)
--- > Type error:Function's result type cannot depend on a variable bound in an argument pattern
--- >
--- > :p (\(u,v). for i:0...u. 1.0) (2, 3)
--- >     ^^^^^^^^^^^^^^^^^^^^^^^^
+# :p (\(u,v). for i:0...u. 1.0) (2, 3)
+# > Type error:Function's result type cannot depend on a variable bound in an argument pattern
+# >
+# > :p (\(u,v). for i:0...u. 1.0) (2, 3)
+# >     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 g : (given (a:Type), a) -> a = \x. x
 
@@ -239,7 +239,7 @@ fun : (given (aaa:Type), aaa) -> aaa = \x. sin x
 > fun : (given (aaa:Type), aaa) -> aaa = \x. sin x
 >                                            ^^^^^
 
-data NewPair(aa:Type, bb:Type) = MkNewPair(aa, bb)
+enum NewPair(aa:Type, bb:Type) = MkNewPair(aa, bb)
 
 fromNewPair : (given (a, b), NewPair a b) -> (a, b) = \p.
   MkNewPair(x, y) = p
@@ -262,25 +262,25 @@ newPair : NewPair Int Float = MkNewPair 1 2.0
 :p NewPair
 > <function of type ((aa:Type,bb:Type) -> Type)>
 
--- TODO: these are broken since switching from newtype mechanism to ADTs
+# TODO: these are broken since switching from newtype mechanism to ADTs
 
--- :p NewPair Int
--- > NewPair Int
+# :p NewPair Int
+# > NewPair Int
 
--- :p NewPair Int Float
--- > NewPair Int Float
+# :p NewPair Int Float
+# > NewPair Int Float
 
--- NewPairIntFloat = NewPair Int Float
+# NewPairIntFloat = NewPair Int Float
 
--- :p NewPairIntFloat
--- > NewPair Int Float
+# :p NewPairIntFloat
+# > NewPair Int Float
 
--- newPair2 : NewPairIntFloat = MkNewPair 1 2.0
+# newPair2 : NewPairIntFloat = MkNewPair 1 2.0
 
--- :p fst $ fromNewPair newPair
--- > 1
+# :p fst $ fromNewPair newPair
+# > 1
 
--- Tests for the Unit index set
+# Tests for the Unit index set
 
 () == ()
 > True
@@ -304,7 +304,7 @@ newPair : NewPair Int Float = MkNewPair 1 2.0
 > ()
 
 
--- Test for pairs
+# Test for pairs
 
 ((2.0, 3.0) + (4.0, 1.1)) ~~ (6.0, 4.1)
 > True
@@ -316,7 +316,7 @@ newPair : NewPair Int Float = MkNewPair 1 2.0
 > True
 
 
--- Tests for Bool
+# Tests for Bool
 :p True == True
 > True
 :p False == True
@@ -356,15 +356,15 @@ def triRefIndex(ref:Ref h ((i':n)=>(..i')=>Float), i:n) -> Ref h ((..i)=>Float)
 > (for i:(Fin 5). for j:(i..). 0.0)[0@_]
 >                                   ^^^
 
--- Type inference of arguments always happens in checking mode, but
--- the checking doesn't provide any insight into what the argument is
--- in this case. This checks that type inference is able to realize
--- that and switch to inference mode, so that it can correctly infer
--- the full dependent type.
---
--- There was a time when this wasn't possible, because checking mode
--- would unify the input type with a non-dependent function type,
--- leading to a later unification errors.
+# Type inference of arguments always happens in checking mode, but
+# the checking doesn't provide any insight into what the argument is
+# in this case. This checks that type inference is able to realize
+# that and switch to inference mode, so that it can correctly infer
+# the full dependent type.
+#
+# There was a time when this wasn't possible, because checking mode
+# would unify the input type with a non-dependent function type,
+# leading to a later unification errors.
 
 id (for i:(Fin 2). for j:(..i). 1.0)
 > [[1.], [1., 1.]]
@@ -377,16 +377,16 @@ def weakerInferenceReduction(l: (i:n)=>(..i)=>Float, j:n) -> ()  given (n|Ix) =
     ()
   ()
 
--- Regression test for
--- https://github.com/google-research/dex-lang/issues/833,
--- simplification of a table of functions whose type mentions
--- the table index.
+# Regression test for
+# https://github.com/google-research/dex-lang/issues/833,
+# simplification of a table of functions whose type mentions
+# the table index.
 val = for i:(Fin 2). \x:Float . for j:(..i). 1
 
 :t val
 > ((i:(Fin 2)) => (x:Float32) -> ((RangeTo (Fin 2) i) => Nat))
 
--- Tests for table
+# Tests for table
 
 a = [0, 1]
 b = [0, 1]
@@ -406,7 +406,7 @@ c = [1, 2]
   f (1,2)
 > 2
 
--- Tests for type inference of table literals
+# Tests for type inference of table literals
 
 def mkEmpty(a|Data) -> (Fin 0)=>a = []
 
@@ -422,15 +422,15 @@ def mkEmpty(a|Data) -> (Fin 0)=>a = []
 def uncurryTable(x: (Fin 2, Fin 2)=>a) -> (Fin 2)=>(Fin 2)=>a  given (a) =
   for i j. x[(i, j)]
 
--- We should be able to infer the tuple type here
+# We should be able to infer the tuple type here
 :t uncurryTable (coerce_table _ [0.0, 1.0, 2.0, 3.0])
 > ((Fin 2) => (Fin 2) => Float32)
 
--- Extra difficulty: need to default the integer type
+# Extra difficulty: need to default the integer type
 :t uncurryTable (coerce_table _ [0, 1, 2, 3])
 > ((Fin 2) => (Fin 2) => Nat)
 
--- Make sure that the local type alias is unifiable with Int
+# Make sure that the local type alias is unifiable with Int
 def GetInt(n: Int) -> Type = Int
 def ff(n : Int) -> Int =
   i = GetInt n
@@ -439,7 +439,7 @@ def ff(n : Int) -> Int =
 ff 0
 > 2
 
--- The two local aliases for Fin n should be unifiable with each other and Fin n
+# The two local aliases for Fin n should be unifiable with each other and Fin n
 def q(n: Nat) -> (Fin n)=>Nat =
   ix1 = Fin n
   x1 = for i:ix1. ordinal i
@@ -450,16 +450,16 @@ def q(n: Nat) -> (Fin n)=>Nat =
 q 5
 > [0, 2, 4, 6, 8]
 
--- Dereference variable names when resolving table type annotations
--- This is a regression test for
--- https://github.com/google-research/dex-lang/issues/563
+# Dereference variable names when resolving table type annotations
+# This is a regression test for
+# https://github.com/google-research/dex-lang/issues/563
 :t coerce_table Bool [0.0, 1.0]
 > (Bool => Float32)
 
--- Regression test for
--- https://github.com/google-research/dex-lang/issues/912.
--- This should not take a long time, because we should compare sizes
--- before constructing the indices of the annotated index set.
+# Regression test for
+# https://github.com/google-research/dex-lang/issues/912.
+# This should not take a long time, because we should compare sizes
+# before constructing the indices of the annotated index set.
 :t [0.0, 1.0]::((Fin 100000000)=>Float)
 > Type error:
 > Expected: (Fin 100000000)
@@ -476,8 +476,8 @@ q 5
 > :t [0.0, 1.0]::((i: Fin 100000000)=>(..i)=>Float)
 >    ^^^^^^^^^^
 
--- Make sure we fail gracefully when the annotated index set doesn't
--- have a static size.
+# Make sure we fail gracefully when the annotated index set doesn't
+# have a static size.
 def frob(_:()) -> () given (n) =
   [0.0, 1.0]::((Fin n)=>Float)
   ()
@@ -490,29 +490,29 @@ def frob(_:()) -> () given (n) =
 
 '### Parser disambiguation of type annotations
 
--- Regression tests for https://github.com/google-research/dex-lang/issues/933
+# Regression tests for https://github.com/google-research/dex-lang/issues/933
 
--- foo is a function with all-implicit arguments (whether that's a
--- good idea or not).
+# foo is a function with all-implicit arguments (whether that's a
+# good idea or not).
 def foo() ->> a=>Float given (a|Ix) =
   for z:a. 1.0
 
 :t foo
 > ({a:Type}[d:(Ix a)] ->> (a => Float32))
 
--- Reference foo with a type annotation (no parens needed)
+# Reference foo with a type annotation (no parens needed)
 foo :: (Fin 3) => Float
 > [1., 1., 1.]
 
--- Type annotation is an operator
+# Type annotation is an operator
 sum $ foo :: (Fin 3) => Float
 > 3.
 
--- A pi type that locally binds foo to the index
+# A pi type that locally binds foo to the index
 (foo : (Fin 3)) => Float
 > ((Fin 3) => Float32)
 
--- The equals sign makes it a type-annotated top-level binding for foo
+# The equals sign makes it a type-annotated top-level binding for foo
 foo : Fin 3 => Float = [1.0, 2.0, 3.0]
 > Error: variable already defined: foo
 >
@@ -547,30 +547,30 @@ def transpose_ix(i:n, j:(i..)) -> (i:n &> ..i) given (n|Ix) =
   i' = unsafe_project i
   (j' ,> i')
 
--- TODO: re-enable when we have a better story for explicitly constructing dependent tables
--- def transpose_lower_to_upper {n v} (lower:LowerTriMat n v) : UpperTriMat n v =
---   for i j.
---     (j' ,> i') = transpose_ix i j
---     lower.j'.i'
+# TODO: re-enable when we have a better story for explicitly constructing dependent tables
+# def transpose_lower_to_upper {n v} (lower:LowerTriMat n v) : UpperTriMat n v =
+#   for i j.
+#     (j' ,> i') = transpose_ix i j
+#     lower.j'.i'
 
--- dpair : ((i:Fin 3)=>(..i)=>Int) =
---   coerce_table _ [ coerce_table _ [1]
---                  , coerce_table _ [2,3]
---                  , coerce_table _ [4,5,6]]
+# dpair : ((i:Fin 3)=>(..i)=>Int) =
+#   coerce_table _ [ coerce_table _ [1]
+#                  , coerce_table _ [2,3]
+#                  , coerce_table _ [4,5,6]]
 
--- :p transpose_lower_to_upper dpair
--- > [[1, 2, 4], [3, 5], [6]]
+# :p transpose_lower_to_upper dpair
+# > [[1, 2, 4], [3, 5], [6]]
 
--- '### Tests for function VSpace
--- that we could restore if we choose to:
--- https://github.com/google-research/dex-lang/issues/1230
+# '### Tests for function VSpace
+# that we could restore if we choose to:
+# https://github.com/google-research/dex-lang/issues/1230
 
--- :p (sin + cos) 5.0 ~~ (\x. sin x + cos x) 5.0
--- > True
--- :p (sin * cos) 5.0 ~~ (\x. sin x * cos x) 5.0
--- > True
--- :p (2.8 .* sin) 5.0 ~~ (\x. 2.8 * sin x) 5.0
--- > True
+# :p (sin + cos) 5.0 ~~ (\x. sin x + cos x) 5.0
+# > True
+# :p (sin * cos) 5.0 ~~ (\x. sin x * cos x) 5.0
+# > True
+# :p (2.8 .* sin) 5.0 ~~ (\x. 2.8 * sin x) 5.0
+# > True
 
 '### Miscellany
 
@@ -578,17 +578,17 @@ xbool : Bool = arb $ new_key 0
 :p xbool
 > True
 
--- This is to ensure we don't accidentally implement `Sub Word32` while we
--- have `Nat` as an alias for `Word32`.
+# This is to ensure we don't accidentally implement `Sub Word32` while we
+# have `Nat` as an alias for `Word32`.
 :p for i:(Fin 4). ordinal i - 1
 > Type error:Couldn't synthesize a class dictionary for: (Sub Nat)
 >
 > :p for i:(Fin 4). ordinal i - 1
 >                   ^^^^^^^^^^^^^
 
--- Check that the result passed to :html has type `String`.  This is
--- also a regression test for
--- https://github.com/google-research/dex-lang/issues/934
+# Check that the result passed to :html has type `String`.  This is
+# also a regression test for
+# https://github.com/google-research/dex-lang/issues/934
 
 table = [1.0, 2.0]
 
@@ -600,14 +600,14 @@ table = [1.0, 2.0]
 > :html table
 >       ^^^^^
 
--- We can't have table literals of non-data
+# We can't have table literals of non-data
 :p [\x:Float. x, \x:Float. x + x]
 > Type error:Couldn't synthesize a class dictionary for: (Data ((x.1:Float32) -> Float32))
 >
 > :p [\x:Float. x, \x:Float. x + x]
 >    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-data A = MkA
+enum A = MkA
 
 interface I(param:Type)
   m : ()
@@ -620,25 +620,25 @@ instance I()
   m = todo
 > Type error:Wrong number of positional arguments provided. Expected 1 but got 0
 
--- This example shows that constraints that we learn from the body of a function
--- can be used outside the function.
+# This example shows that constraints that we learn from the body of a function
+# can be used outside the function.
 :p
-  -- u1 = <fresh_unif>
-  z = zero -- zero(at=u1)
+  # u1 = <fresh_unif>
+  z = zero # zero(at=u1)
   def foo(aa:Type, x:Int) =
-     x + z -- implies `u1->Int`. We can hoist this constraint outside of `foo`
-           -- and use it to zonk the `z = zero(at=u1)` decl.
+     x + z # implies `u1->Int`. We can hoist this constraint outside of `foo`
+           # and use it to zonk the `z = zero(at=u1)` decl.
   z
 > 0
 
--- This example shows that we *have to* use the constraints outside the function
--- (i.e. `u1->Int`) even if `u1` is sufficiently constrained elsewhere because
--- the constraints might conflict.
+# This example shows that we *have to* use the constraints outside the function
+# (i.e. `u1->Int`) even if `u1` is sufficiently constrained elsewhere because
+# the constraints might conflict.
 :p
-  -- u1 = <fresh_unif>
+  # u1 = <fresh_unif>
   z = zero
   def foo(aa:Type, x:Int) =
-     -- solved! u1->Int
+     # solved! u1->Int
      x + z
   1.0 + z
 > Type error:
@@ -648,14 +648,14 @@ instance I()
 >   1.0 + z
 >         ^
 
--- But sometimes the solution can't be hoisted because it refers to local
--- variables. In that case we have to throw an error about leaked variables.
+# But sometimes the solution can't be hoisted because it refers to local
+# variables. In that case we have to throw an error about leaked variables.
 :p
-  -- u1 = <fresh_unif>
-  z = zero -- zero(at=u1)
+  # u1 = <fresh_unif>
+  z = zero # zero(at=u1)
   def foo(aa:Type, x:aa) =
-     x + z -- implies `u1->aa`, but we can't hoist solution above `aa`
-           -- Also, we can't ignore this solution because ...
+     x + z # implies `u1->aa`, but we can't hoist solution above `aa`
+           # Also, we can't ignore this solution because ...
   1 + z
 > Leaked local variables:[aa]
 > Failed to exchange binders in buildAbsInf
@@ -667,18 +667,18 @@ instance I()
 >   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
--- We don't need to throw a leaked variable here. We know that `u1` can't be
--- used outside because we introduced it underneath the `a` binder. So we can
--- happily delete the `u1` binder and its solution once we've applied the
--- solution,`u1 -> a`, to all the occurrences of `u1`.
+# We don't need to throw a leaked variable here. We know that `u1` can't be
+# used outside because we introduced it underneath the `a` binder. So we can
+# happily delete the `u1` binder and its solution once we've applied the
+# solution,`u1 -> a`, to all the occurrences of `u1`.
 :p
   def should_be_fine(
       a:Type,
-      -- u1 = <fresh_unif>
-      x  -- x:u1
-      ) -> a = x  -- solved! u1 -> a This solution won't hoist outside of a's
-                  -- scope but that's ok. We know there are no other use sites
-                  -- of `u1` because it goes out of scope before `a` does.
+      # u1 = <fresh_unif>
+      x # x:u1
+      ) -> a = x # solved! u1 -> a This solution won't hoist outside of a's
+                  # scope but that's ok. We know there are no other use sites
+                  # of `u1` because it goes out of scope before `a` does.
   1
 > 1
 

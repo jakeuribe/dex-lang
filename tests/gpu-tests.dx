@@ -6,7 +6,7 @@ x
 x + x
 > [0., 2., 4., 6., 8.]
 
--- TODO: Make it a FileCheck test
+# TODO: Make it a FileCheck test
 testNestedParallelism =
   for i:(Fin 10).
     x = ordinal i
@@ -15,7 +15,7 @@ testNestedParallelism =
 (fst testNestedParallelism.(2@_)).(5@_)
 > 20.
 
--- TODO: Make it a FileCheck test
+# TODO: Make it a FileCheck test
 testNestedLoops =
   for i:(Fin 10).
     for j:(Fin 20).
@@ -23,11 +23,11 @@ testNestedLoops =
 testNestedLoops.(4@_).(5@_)
 > 20
 
--- The state is large enough such that it shouldn't fit on the stack of a
--- single GPU thread. It should get lifted to a top-level allocation instead.
--- allocationLiftingTest =
---   for i:(Fin 100).
---     yieldState (for j:(Fin 1000). ordinal i) $ \s.
---       s!(0@_) := get s!(0@_) + 1
--- (allocationLiftingTest.(4@_).(0@_), allocationLiftingTest.(4@_).(1@_))
--- > (5, 4)
+# The state is large enough such that it shouldn't fit on the stack of a
+# single GPU thread. It should get lifted to a top-level allocation instead.
+# allocationLiftingTest =
+#   for i:(Fin 100).
+#     yieldState (for j:(Fin 1000). ordinal i) $ \s.
+#       s!(0@_) := get s!(0@_) + 1
+# (allocationLiftingTest.(4@_).(0@_), allocationLiftingTest.(4@_).(1@_))
+# > (5, 4)

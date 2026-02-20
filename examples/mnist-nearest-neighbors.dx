@@ -1,15 +1,16 @@
 '# THIS FILE IS STALE
 
-'(But we plan to update it at some point)
+'(Syntax has been updated, but the `load dxbo` mechanism no longer exists,
+so this example cannot currently run without a data loading alternative.)
 
-load dxbo "scratch/mnist.dxbo" as mnist
-
-:t mnist
+# load dxbo "scratch/mnist.dxbo" as mnist
+#
+# :t mnist
 
 # TODO: these should come from the data set itself
-type Img = 28=>28=>Float
-type NTrain = 60000
-type NTest  = 10000
+Img = 28=>28=>Float
+NTrain = Fin 60000
+NTest  = Fin 10000
 
 (xsTrain, ysTrain, xsTest, ysTest) = mnist
 
@@ -22,7 +23,7 @@ imgDistance : Img -> Img -> Float
 imgDistance x y = sum for (i,j). sq (x.i.j - y.i.j)
 
 fracTrue : n=>Bool -> Float
-fracTrue xs = mean for i. float (b2i xs.i)
+fracTrue xs = mean for i. b_to_f xs.i
 
 example = asidx @NTest 123
 :plotmat xsTest.example
@@ -32,7 +33,7 @@ closest = findNearestNeighbor imgDistance xsTrain (xsTest.example)
 :plotmat xsTrain.closest
 
 # Make a subset of the test set (evaluating a single test example takes ~80ms)
-type NTestSmall = 1000
+NTestSmall = Fin 1000
 xsTest' = slice @NTestSmall xsTest 0
 ysTest' = slice @NTestSmall ysTest 0
 

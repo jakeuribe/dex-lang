@@ -86,17 +86,17 @@ def argmax_suchthat_table [Ord o] (xs:n=>o) (cond:n=>Bool): n =
 
 '### Simplex data types
 
-data SimplexResult n:Type =
+enum SimplexResult n:Type =
   Infeasible
   Unbounded
   Solution (n=>Float)
 
-data ConstraintType =
+enum ConstraintType =
   LessThan
   GreaterThan
   # Todo: Add equality constraints
 
-data ObjectiveType =
+enum ObjectiveType =
   Maximize
   Minimize
 

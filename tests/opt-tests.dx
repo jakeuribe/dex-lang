@@ -1,198 +1,198 @@
 @noinline
 def id'(x:Int) -> Int = x
 
--- CHECK-LABEL: dce-dead-app
+# CHECK-LABEL: dce-dead-app
 "dce-dead-app"
 
 %passes opt
 :pp
   x = id' 1
   5 + 1
--- First Result is from optimizing id'
--- CHECK: === Result ===
--- CHECK: === Result ===
--- CHECK-NEXT: 0x6
+# First Result is from optimizing id'
+# CHECK: === Result ===
+# CHECK: === Result ===
+# CHECK-NEXT: 0x6
 
 def arange_f(off:Nat) -> (Fin n)=>Int given (n) =
   for i. id' $ (n_to_i $ ordinal i + off)
 
--- CHECK-LABEL: matmul-single-alloc
+# CHECK-LABEL: matmul-single-alloc
 "matmul-single-alloc"
 m = for i:(Fin 100) j:(Fin 100). n_to_f $ ordinal (i, j)
 
 %passes imp
 m' = naive_matmul(m, m)
--- CHECK: alloc Float32[10000]
--- CHECK-NOT: alloc
+# CHECK: alloc Float32[10000]
+# CHECK-NOT: alloc
 
 "basic destination passing for scalar array literals"
--- CHECK-LABEL: basic destination passing for scalar array literals
+# CHECK-LABEL: basic destination passing for scalar array literals
 
 %passes lower
 _ = for i:(Fin 50). [ordinal i, 2, 3]
--- CHECK-NOT: alloc
+# CHECK-NOT: alloc
 
 "no destinations for singleton values"
--- CHECK-LABEL: no destinations for singleton values
+# CHECK-LABEL: no destinations for singleton values
 
 %passes lower
 :pp yield_state 0 \ref.
   for i:(Fin 10). ref := get ref + 1
--- CHECK-NOT: alloc
+# CHECK-NOT: alloc
 
--- === Loop unrolling ===
+# === Loop unrolling ===
 
--- CHECK-LABEL: unroll-eliminate-table
+# CHECK-LABEL: unroll-eliminate-table
 "unroll-eliminate-table"
 
 %passes opt
 :pp
   [x0, x1, x2] = arange_f 2
   (x0, x2)
--- CHECK: === Result ===
--- CHECK: [[x0:[^ ]*]]:Int32 = id{{.*}} 2
--- CHECK-NEXT: [[x2:[^ ]*]]:Int32 = id{{.*}} 4
--- CHECK-NEXT: ([[x0]], [[x2]])
+# CHECK: === Result ===
+# CHECK: [[x0:[^ ]*]]:Int32 = id{{.*}} 2
+# CHECK-NEXT: [[x2:[^ ]*]]:Int32 = id{{.*}} 4
+# CHECK-NEXT: ([[x0]], [[x2]])
 
 "don't unroll large table literals"
--- CHECK-LABEL: don't unroll large table literals
+# CHECK-LABEL: don't unroll large table literals
 
 %passes opt
 x = for i:(Fin 4). [0, 0, 0, ordinal i, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
--- CHECK: [ 0x0
--- CHECK: , 0x0 ]
--- CHECK-NOT: [0x0
+# CHECK: [ 0x0
+# CHECK: , 0x0 ]
+# CHECK-NOT: [0x0
 
 "no excessive nested unrolling"
--- CHECK-LABEL: no excessive nested unrolling
+# CHECK-LABEL: no excessive nested unrolling
 
 %passes opt
 _ = for i:(Fin 20) j:(Fin 4). ordinal j
--- CHECK: [0x0, 0x1, 0x2, 0x3]
--- CHECK-NOT: [0x0, 0x1, 0x2, 0x3]
+# CHECK: [0x0, 0x1, 0x2, 0x3]
+# CHECK-NOT: [0x0, 0x1, 0x2, 0x3]
 
 "no excessive atom body unrolling"
--- CHECK-LABEL: no excessive atom body unrolling
+# CHECK-LABEL: no excessive atom body unrolling
 
 one_f32 : Float32 = 1.0
 
 %passes simp
 _ = for i:(Fin 100). one_f32
--- CHECK: 1.
--- CHECK-NOT: 1.
+# CHECK: 1.
+# CHECK-NOT: 1.
 
--- === Loop invariant code motion ===
+# === Loop invariant code motion ===
 
 "alloc hoisting"
--- CHECK-LABEL: alloc hoisting
+# CHECK-LABEL: alloc hoisting
 
 %passes lower-opt
 _ = for i:(Fin 10).
   n = ordinal i + 2
   for j:(Fin 4).
     xs = for k:(Fin n). ordinal j
-    (sum xs, sum xs)  -- Two uses of xs to defeat the inliner
--- The alloc for the (ordinal i + 2)-sized array should happen in the i loop,
--- not in the j loop
--- CHECK: [[n:v#[0-9]+]]:Word32 = %iadd {{.*}} 0x2
--- CHECK-NOT: seq
--- CHECK: alloc {{.*}}RawFin{{.*}}[[n]]
--- CHECK: seq
--- CHECK: seq
+    (sum xs, sum xs) # Two uses of xs to defeat the inliner
+# The alloc for the (ordinal i + 2)-sized array should happen in the i loop,
+# not in the j loop
+# CHECK: [[n:v#[0-9]+]]:Word32 = %iadd {{.*}} 0x2
+# CHECK-NOT: seq
+# CHECK: alloc {{.*}}RawFin{{.*}}[[n]]
+# CHECK: seq
+# CHECK: seq
 
 "loop hoisting"
--- CHECK-LABEL: loop hoisting
+# CHECK-LABEL: loop hoisting
 
 %passes opt
 _ = for i:(Fin 20) j:(Fin 4). ordinal j
--- CHECK-NOT: for
--- CHECK: [[x:v#[0-9]+]]:{{.*}} = [0x0, 0x1, 0x2, 0x3]
--- CHECK: for {{.*}}:{{.*}}. [[x]]
+# CHECK-NOT: for
+# CHECK: [[x:v#[0-9]+]]:{{.*}} = [0x0, 0x1, 0x2, 0x3]
+# CHECK: for {{.*}}:{{.*}}. [[x]]
 
--- === Peephole optimization ===
+# === Peephole optimization ===
 
 "constant fold boolean expressions"
--- CHECK-LABEL: constant fold boolean expressions
+# CHECK-LABEL: constant fold boolean expressions
 
 %passes opt
 :pp (2 > 1 || 4 < 5) && 6 == 6
--- CHECK: (1| () |)
+# CHECK: (1| () |)
 
--- === Vectorization ===
+# === Vectorization ===
 
 "vectorization"
--- CHECK-LABEL: vectorization
+# CHECK-LABEL: vectorization
 
 "vectorizing int binary op"
--- CHECK-LABEL: vectorizing int binary op
+# CHECK-LABEL: vectorizing int binary op
 %passes vect
 _ = for i:(Fin 256). (n_to_i32 (ordinal i)) * 2
--- CHECK: seq (RawFin 0x10)
--- CHECK: [[i0:v#[0-9]+]]:<16xInt32> = vbroadcast
--- CHECK: [[i1:v#[0-9]+]]:<16xInt32> = viota
--- CHECK: [[i2:v#[0-9]+]]:<16xInt32> = %iadd [[i0]] [[i1]]
--- CHECK: [[twos:v#[0-9]+]]:<16xInt32> = vbroadcast 2
--- CHECK: %imul [[i2]] [[twos]]
+# CHECK: seq (RawFin 0x10)
+# CHECK: [[i0:v#[0-9]+]]:<16xInt32> = vbroadcast
+# CHECK: [[i1:v#[0-9]+]]:<16xInt32> = viota
+# CHECK: [[i2:v#[0-9]+]]:<16xInt32> = %iadd [[i0]] [[i1]]
+# CHECK: [[twos:v#[0-9]+]]:<16xInt32> = vbroadcast 2
+# CHECK: %imul [[i2]] [[twos]]
 
 "vectorizing float binary op"
--- CHECK-LABEL: vectorizing float binary op
+# CHECK-LABEL: vectorizing float binary op
 %passes vect
 _ = for i:(Fin 256). (n_to_f32 (ordinal i)) + 1
--- CHECK: seq (RawFin 0x10)
--- CHECK: [[i0:v#[0-9]+]]:<16xFloat32> = vbroadcast
--- CHECK: [[i1:v#[0-9]+]]:<16xFloat32> = viota
--- CHECK: [[i2:v#[0-9]+]]:<16xFloat32> = %fadd [[i0]] [[i1]]
--- CHECK: [[ones:v#[0-9]+]]:<16xFloat32> = vbroadcast 1.
--- CHECK: %fadd [[i2]] [[ones]]
+# CHECK: seq (RawFin 0x10)
+# CHECK: [[i0:v#[0-9]+]]:<16xFloat32> = vbroadcast
+# CHECK: [[i1:v#[0-9]+]]:<16xFloat32> = viota
+# CHECK: [[i2:v#[0-9]+]]:<16xFloat32> = %fadd [[i0]] [[i1]]
+# CHECK: [[ones:v#[0-9]+]]:<16xFloat32> = vbroadcast 1.
+# CHECK: %fadd [[i2]] [[ones]]
 
 "vectorizing float64 binary op, implies different width"
--- CHECK-LABEL: vectorizing float64 binary op, implies different width
+# CHECK-LABEL: vectorizing float64 binary op, implies different width
 %passes vect
 _ = for i:(Fin 256). (n_to_f64 (ordinal i)) + 1
--- CHECK: seq (RawFin 0x20)
--- CHECK: [[i0:v#[0-9]+]]:<8xFloat64> = vbroadcast
--- CHECK: [[i1:v#[0-9]+]]:<8xFloat64> = viota
--- CHECK: [[i2:v#[0-9]+]]:<8xFloat64> = %fadd [[i0]] [[i1]]
--- CHECK: [[ones:v#[0-9]+]]:<8xFloat64> = vbroadcast 1.
--- CHECK: %fadd [[i2]] [[ones]]
+# CHECK: seq (RawFin 0x20)
+# CHECK: [[i0:v#[0-9]+]]:<8xFloat64> = vbroadcast
+# CHECK: [[i1:v#[0-9]+]]:<8xFloat64> = viota
+# CHECK: [[i2:v#[0-9]+]]:<8xFloat64> = %fadd [[i0]] [[i1]]
+# CHECK: [[ones:v#[0-9]+]]:<8xFloat64> = vbroadcast 1.
+# CHECK: %fadd [[i2]] [[ones]]
 
 "vectorizing array reference"
--- CHECK-LABEL: vectorizing array reference
+# CHECK-LABEL: vectorizing array reference
 xs = for i:(Fin 256). (n_to_i32 (ordinal i)) + 1
 
 %passes vect
 _ = for i:(Fin 256). xs[i] + 1
--- CHECK: seq (RawFin 0x10)
--- CHECK: [[i:v#[0-9]+]]:<16xInt32> =
--- CHECK-NEXT: vslice
--- CHECK: [[ones:v#[0-9]+]]:<16xInt32> = vbroadcast 1
--- CHECK: %iadd [[i]] [[ones]]
+# CHECK: seq (RawFin 0x10)
+# CHECK: [[i:v#[0-9]+]]:<16xInt32> =
+# CHECK-NEXT: vslice
+# CHECK: [[ones:v#[0-9]+]]:<16xInt32> = vbroadcast 1
+# CHECK: %iadd [[i]] [[ones]]
 
 "vectorizing reader effect"
--- CHECK-LABEL: vectorizing reader effect
+# CHECK-LABEL: vectorizing reader effect
 %passes vect
 _ = with_reader 2 \ref.
   for i:(Fin 256). xs[i] + ask(ref)
--- CHECK: seq (RawFin 0x10)
--- CHECK: [[ref:v#[0-9]+]]:Int32 = ask
--- CHECK: [[xi:v#[0-9]+]]:<16xInt32> =
--- CHECK-NEXT: vslice
--- CHECK: [[bcast:v#[0-9]+]]:<16xInt32> = vbroadcast [[ref]]
--- CHECK: %iadd [[xi]] [[bcast]]
+# CHECK: seq (RawFin 0x10)
+# CHECK: [[ref:v#[0-9]+]]:Int32 = ask
+# CHECK: [[xi:v#[0-9]+]]:<16xInt32> =
+# CHECK-NEXT: vslice
+# CHECK: [[bcast:v#[0-9]+]]:<16xInt32> = vbroadcast [[ref]]
+# CHECK: %iadd [[xi]] [[bcast]]
 
 "vectorizing independent writer effect"
--- CHECK-LABEL: vectorizing independent writer effect
+# CHECK-LABEL: vectorizing independent writer effect
 %passes vect
 _ = yield_accum (AddMonoid Int32) \ref.
   for i:(Fin 256). ref!i += xs[i]
--- CHECK: seq (RawFin 0x10)
--- CHECK: [[refi:v#[0-9]+]]:(Ref {{v#[0-9]+}} <16xInt32>) = vrefslice
--- CHECK: [[xi:v#[0-9]+]]:<16xInt32> =
--- CHECK-NEXT: vslice
--- CHECK: extend [[refi]] [[xi]]
+# CHECK: seq (RawFin 0x10)
+# CHECK: [[refi:v#[0-9]+]]:(Ref {{v#[0-9]+}} <16xInt32>) = vrefslice
+# CHECK: [[xi:v#[0-9]+]]:<16xInt32> =
+# CHECK-NEXT: vslice
+# CHECK: extend [[refi]] [[xi]]
 
 "vectorizing under an outer loop, like matmul"
--- CHECK-LABEL: vectorizing under an outer loop, like matmul
+# CHECK-LABEL: vectorizing under an outer loop, like matmul
 
 mat1 = for i:(Fin 32). for j:(Fin 32).
   (n_to_i32 (ordinal i)) * (n_to_i32 (ordinal j)) + 1
@@ -205,15 +205,15 @@ _ = yield_accum (AddMonoid Int32) \result.
   for k:(Fin 32).
     for j:(Fin 32).
       result!(3@(Fin 32))!j += mat1[3@_][k] * mat2[k][j]
--- CHECK: seq (RawFin 0x2)
--- CHECK: [[refj:v#[0-9]+]]:(Ref {{v#[0-9]+}} <16xInt32>) = vrefslice
--- CHECK: [[mat2j:v#[0-9]+]]:<16xInt32> = vslice
--- CHECK: [[mat1:v#[0-9]+]]:<16xInt32> = vbroadcast
--- CHECK: [[prodj:v#[0-9]+]]:<16xInt32> = %imul [[mat1]] [[mat2j]]
--- CHECK: extend [[refj]] [[prodj]]
+# CHECK: seq (RawFin 0x2)
+# CHECK: [[refj:v#[0-9]+]]:(Ref {{v#[0-9]+}} <16xInt32>) = vrefslice
+# CHECK: [[mat2j:v#[0-9]+]]:<16xInt32> = vslice
+# CHECK: [[mat1:v#[0-9]+]]:<16xInt32> = vbroadcast
+# CHECK: [[prodj:v#[0-9]+]]:<16xInt32> = %imul [[mat1]] [[mat2j]]
+# CHECK: extend [[refj]] [[prodj]]
 
 "vectorizing through the `tile` combinator and its funny index set"
--- CHECK-LABEL: vectorizing through the `tile` combinator and its funny index set
+# CHECK-LABEL: vectorizing through the `tile` combinator and its funny index set
 
 %passes vect
 _ = yield_accum (AddMonoid Int32) \result.
@@ -221,20 +221,20 @@ _ = yield_accum (AddMonoid Int32) \result.
     for_ i:set.
       ix = inject(i, to=(Fin 256))
       result!ix += xs[ix]
--- CHECK: seq (RawFin 0x8)
--- CHECK: seq (RawFin 0x2)
--- CHECK: [[refix:v#[0-9]+]]:(Ref {{v#[0-9]+}} <16xInt32>) = vrefslice
--- CHECK: [[xsix:v#[0-9]+]]:<16xInt32> =
--- CHECK-NEXT: vslice
--- CHECK: extend [[refix]] [[xsix]]
+# CHECK: seq (RawFin 0x8)
+# CHECK: seq (RawFin 0x2)
+# CHECK: [[refix:v#[0-9]+]]:(Ref {{v#[0-9]+}} <16xInt32>) = vrefslice
+# CHECK: [[xsix:v#[0-9]+]]:<16xInt32> =
+# CHECK-NEXT: vslice
+# CHECK: extend [[refix]] [[xsix]]
 
 "Non-aligned"
--- CHECK-LABEL: Non-aligned
+# CHECK-LABEL: Non-aligned
 
--- This is a regression test.  We are checking that Dex-side
--- vectorization does not end up assuming that arrays are aligned on
--- the size of the vectors, only on the size of the underlying
--- scalars.
+# This is a regression test.  We are checking that Dex-side
+# vectorization does not end up assuming that arrays are aligned on
+# the size of the vectors, only on the size of the underlying
+# scalars.
 
 non_aligned = for i:(Fin 7). for j:(Fin 257). +0
 
@@ -244,5 +244,5 @@ _ = yield_accum (AddMonoid Int32) \result.
     for_ i:set.
       ix = inject(i, to=(Fin 257))
       result!(6@(Fin 7))!ix += non_aligned[6@_][ix]
--- CHECK: load <16 x i32>, <16 x i32>* %"v#{{[0-9]+}}", align 4
--- CHECK: store <16 x i32> %"v#{{[0-9]+}}", <16 x i32>* %"v#{{[0-9]+}}", align 4
+# CHECK: load <16 x i32>, <16 x i32>* %"v#{{[0-9]+}}", align 4
+# CHECK: store <16 x i32> %"v#{{[0-9]+}}", <16 x i32>* %"v#{{[0-9]+}}", align 4

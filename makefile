@@ -220,8 +220,10 @@ example-names := \
   latex dither mcts md bfgs
 
 # TODO: re-enable
-# fft vega-plotting
+# fft
 # examples depending on linalg: linear-maps, psd, kernelregression
+
+example-names += vega-plotting
 
 # Only test levenshtein-distance on Linux, because MacOS ships with a
 # different (apparently _very_ different) word list.

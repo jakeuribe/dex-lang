@@ -28,7 +28,7 @@
 
 f = \x. x + 10.
 
-:p f -1.0   -- parses as (-) f (-1.0)
+:p f -1.0 # parses as (-) f (-1.0)
 > Type error:
 > Expected: ((x:Float32) -> Float32)
 >   Actual: Float32
@@ -61,8 +61,8 @@ f = \x. x + 10.
       ref := get ref + 1
 > ((), 10)
 
--- Check that a syntax error in a funDefLet doesn't try to reparse the
--- whole definition as something it's not.
+# Check that a syntax error in a funDefLet doesn't try to reparse the
+# whole definition as something it's not.
 def frob(x:Int, y:Int) -> + =
 
 > Parse error:66:29:
@@ -72,7 +72,7 @@ def frob(x:Int, y:Int) -> + =
 > unexpected '='
 > expecting name or symbol name
 
--- Check that indented blocks have to actually be indented.
+# Check that indented blocks have to actually be indented.
 for i.
 i
 
@@ -93,15 +93,15 @@ def (foo + bar) : Int = 6
 
 'Data definitions allow but do not require type / kind annotations
 
-data MyPair1(a, b) = MkPair1(a, b)
+enum MyPair1(a, b) = MkPair1(a, b)
 
-data MyPair2(a:Type, b:Type) = MkPair2(x:a, y:b)
+enum MyPair2(a:Type, b:Type) = MkPair2(x:a, y:b)
 
 'Data definitions allow interleaving arguments and class constraints
 (regression test for Issue 1015)
 
-data TableInType(n|Ix, a, table:(n=>a)) =
-  MkTableInType              -- Doesn't store any data except in the type!
+enum TableInType(n|Ix, a, table:(n=>a)) =
+  MkTableInType # Doesn't store any data except in the type!
 
 'Left arrow <- desugars to a continuation lambda
 (feature test for Issue 1137)
@@ -116,7 +116,7 @@ data TableInType(n|Ix, a, table:(n=>a)) =
 without parens or with whitespace before the parens.
 
 
-data MyMaybe a =
+enum MyMaybe a =
   MyNothing
 
 > Parse error:119:14:
@@ -125,7 +125,7 @@ data MyMaybe a =
 >     |              ^
 > unexpected 'a'
 > expecting '=' or parameter list in parentheses (without preceding whitespace)
-data MyMaybe (a) =
+enum MyMaybe (a) =
   MyNothing
 
 > Parse error:128:14:
@@ -134,7 +134,7 @@ data MyMaybe (a) =
 >     |              ^
 > unexpected '('
 > expecting '=' or parameter list in parentheses (without preceding whitespace)
-data MyMaybe(a) =
+enum MyMaybe(a) =
   MyNothing
   MyJust a
 
@@ -144,7 +144,7 @@ data MyMaybe(a) =
 >     |          ^^
 > unexpected "a<newline>"
 > expecting end of input, end of line, or optional parameter list
-data MyMaybe(a) =
+enum MyMaybe(a) =
   MyNothing
   MyJust (a)
 
