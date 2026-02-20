@@ -1,0 +1,5 @@
+Expected output from sierpinski.dx
+============================================================
+
+  :html show_plot $ xy_plot xs ys
+  > <html output>

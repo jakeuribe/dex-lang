@@ -1,0 +1,14 @@
+Expected output from regression.dx
+============================================================
+
+  :html show_plot $ xy_plot xs ys
+  > <html output>
+
+  :html show_plot $ xy_plot xsTest (map predict xsTest)
+  > <html output>
+
+  :p rmsErr ys (map predict xs)
+  > 0.2455227
+
+                   Right _ -> 1.0
+  > <html output>

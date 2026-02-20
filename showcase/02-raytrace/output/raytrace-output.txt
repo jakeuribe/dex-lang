@@ -1,0 +1,8 @@
+Expected output from raytrace.dx
+============================================================
+
+  :html imshow image
+  > <html output>
+
+  :html imshow image2
+  > <html output>

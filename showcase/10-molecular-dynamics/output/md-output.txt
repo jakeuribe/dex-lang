@@ -1,0 +1,156 @@
+Expected output from md.dx
+============================================================
+
+  L_small
+  > 20.41241
+
+  :html render_svg (draw_system 0.5 R_init_small) (Point(0.0, 0.0), Point(L_small, L_small))
+  > <html output>
+  > 
+  > Compile time: 309.318 ms
+  > Run time:     17.076 ms
+
+  :t energy R_init_small
+  > Float32
+
+  energy R_init_small
+  > 74.69006
+
+  energy $ fire_descent_step(free_shift, energy, state_small).R
+  > 71.78407
+
+    (s', energy $ s'.R)
+  > 
+  > Compile time: 698.365 ms
+  > Run time:     942.147 ms
+
+  :html show_plot $ y_plot energies
+  > <html output>
+  > 
+  > Compile time: 724.795 ms
+  > Run time:     3.076 ms
+
+  :html render_svg (draw_system 0.5 (state_small'.R)) (Point(0.0, 0.0), Point(L_small, L_small))
+  > <html output>
+  > 
+  > Compile time: 318.742 ms
+  > Run time:     14.919 ms
+
+  tbl = cell_table grid_size bucket_size cell_size $ state_small'.R
+  > 
+  > Compile time: 128.647 ms
+  > Run time:     14.530 us
+
+  :t tbl
+  > (((Fin 2) => Fin 20) => BoundedList (Fin 10) (Fin 500))
+
+  as_list tbl[unsafe_from_ordinal 0]
+  > (AsList 2 [33, 237])
+
+  :t cell_neighbors_2d
+  > ((Fin 9) => (Fin 2) => Int32)
+
+    (periodic_near 1.0 L_small $ state_small'.R) $ state_small'.R)
+  > 
+  > Compile time: 104.015 ms
+  > Run time:     134.844 us
+
+  k
+  > 3090
+
+  energy_nl(L_small, as_list res)(state_small'.R)
+  > 1.230965
+
+  energy (state_small'.R)
+  > 1.230966
+
+  energy R_init_small
+  > 74.69006
+
+  energy $ fire_descent_step(free_shift, energy, state_small).R
+  > 71.78407
+
+    unsafe_io \. simulate (periodic_displacement L_small) 0.5 L_small (Fin 100) state_small
+  > 4568 initial neighbor list size
+  > 4614 new neighbor list size
+  > 4564 new neighbor list size
+  > 4376 new neighbor list size
+  > 4346 new neighbor list size
+  > 4266 new neighbor list size
+  > 4178 new neighbor list size
+  > 4140 new neighbor list size
+  > 4100 new neighbor list size
+  > 4028 new neighbor list size
+  > 4006 new neighbor list size
+  > 3922 new neighbor list size
+  > 3868 new neighbor list size
+  > 3810 new neighbor list size
+  > 3762 new neighbor list size
+  > 3720 new neighbor list size
+  > 3656 new neighbor list size
+  > 3640 new neighbor list size
+  > 3602 new neighbor list size
+  > 3572 new neighbor list size
+  > 3554 new neighbor list size
+  > 
+  > Compile time: 1.768 s
+  > Run time:     17.954 ms
+
+  :html show_plot $ y_plot energies_nl
+  > <html output>
+  > 
+  > Compile time: 738.194 ms
+  > Run time:     3.072 ms
+
+  :html render_svg (draw_system 0.5 state_nl'.R) (Point(0.0, 0.0), Point(L_small, L_small))
+  > <html output>
+  > 
+  > Compile time: 327.153 ms
+  > Run time:     14.981 ms
+
+  L_large
+  > 20.41241
+
+  :html render_svg (draw_system 0.2 R_init_large) (Point(0.0, 0.0), Point(L_large, L_large))
+  > <html output>
+  > 
+  > Compile time: 302.700 ms
+  > Run time:     16.298 ms
+
+    unsafe_io \. simulate (periodic_displacement L_large) 0.5 L_large (Fin 100) state_large
+  > 4568 initial neighbor list size
+  > 4614 new neighbor list size
+  > 4564 new neighbor list size
+  > 4376 new neighbor list size
+  > 4346 new neighbor list size
+  > 4266 new neighbor list size
+  > 4178 new neighbor list size
+  > 4140 new neighbor list size
+  > 4100 new neighbor list size
+  > 4028 new neighbor list size
+  > 4006 new neighbor list size
+  > 3922 new neighbor list size
+  > 3868 new neighbor list size
+  > 3810 new neighbor list size
+  > 3762 new neighbor list size
+  > 3720 new neighbor list size
+  > 3656 new neighbor list size
+  > 3640 new neighbor list size
+  > 3602 new neighbor list size
+  > 3572 new neighbor list size
+  > 3554 new neighbor list size
+  > 
+  > Compile time: 1.724 s
+  > Run time:     18.361 ms
+
+  :html show_plot $ y_plot energies_large_nl
+  > <html output>
+  > 
+  > Compile time: 757.663 ms
+  > Run time:     3.450 ms
+
+  :html render_svg (draw_system 0.2 state_large_nl'.R) (Point(0.0, 0.0), Point(L_large, L_large))
+  > <html output>
+  > 
+  > Compile time: 301.748 ms
+  > Run time:     15.928 ms

@@ -1,0 +1,11 @@
+Expected output from ode-integrator.dx
+============================================================
+
+  :p approx_e
+  > [[2.720176]]
+
+  :p (approx_e - exact_e) # amount of numerical error
+  > [[0.001894474]]
+
+  :html show_plot $ y_plot for i. ys[i, from_ordinal 0]
+  > <html output>
