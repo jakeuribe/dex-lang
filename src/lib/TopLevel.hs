@@ -212,10 +212,7 @@ evalSourceBlock mname block = do
     logTop $ SourceInfo $ SIGroupingInfo $ getGroupingInfo $ sbContents block
     evalSourceBlock' mname block
   case (maybeErr, sbContents block) of
-    (Failure _, TopDecl decl) -> do
-      case parseDecl decl of
-        Success decl' -> emitSourceMap $ uDeclErrSourceMap (makeTopNameDescription mname block) decl'
-        Failure _ -> return ()
+    (Failure _, TopDecl _) -> return ()  -- Don't register failed names so they can be redefined
     _ -> return ()
   return maybeErr
 
