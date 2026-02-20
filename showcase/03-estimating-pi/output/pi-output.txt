@@ -1,8 +1,0 @@
-Expected output from pi.dx
-============================================================
-
-  :p meanAndStdDev numSamps estimatePiArea (new_key 0)
-  > (3.141656, 1.642139)
-
-  :p meanAndStdDev numSamps estimatePiAvgVal (new_key 0)
-  > (3.145509, 0.8862508)

@@ -1,5 +1,0 @@
-Expected output from mandelbrot.dx
-============================================================
-
-  :html matshow(-escapeGrid)
-  > <html output>
