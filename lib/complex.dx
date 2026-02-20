@@ -54,7 +54,12 @@ def complex_arg(x:Complex) -> Float = atan2 x.im x.re
 def complex_log(x:Complex) -> Complex = Complex(log (complex_mag x), complex_arg x)
 def complex_log2(x:Complex) -> Complex = complex_log x / log 2.0
 def complex_log10(x:Complex) -> Complex = complex_log x / log 10.0
-def complex_pow(base:Complex, power:Complex) -> Complex = complex_exp(power * complex_log base)
+def complex_pow(base:Complex, power:Complex) -> Complex =
+  case (base.re == 0.0) && (base.im == 0.0) of
+    True -> case power.re > 0.0 of
+      True  -> Complex(0.0, 0.0)
+      False -> complex_exp(power * complex_log base)
+    False -> complex_exp(power * complex_log base)
 
 def complex_sqrt(x:Complex) -> Complex =
   m = complex_mag x
