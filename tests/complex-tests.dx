@@ -17,9 +17,9 @@ b = Complex (-1.1) 1.3
 > True
 :p divide (a * b) a ~~ b
 > True
--- This next test can be added once we parameterize the field in the VSpace typeclass.
---:p ((a * b) / a) ~~ b
---> True
+# This next test can be added once we parameterize the field in the VSpace typeclass.
+#:p ((a * b) / a) ~~ b
+#> True
 :p a == b
 > False
 :p a == a
@@ -44,7 +44,7 @@ b = Complex (-1.1) 1.3
 > True
 :p tan (-a) ~~ (- (tan a))
 > True
-:p exp (pi .* (Complex 0.0 1.0)) ~~ (Complex (-1.0) 0.0)  -- Euler's identity
+:p exp (pi .* (Complex 0.0 1.0)) ~~ (Complex (-1.0) 0.0) # Euler's identity
 > True
 :p ((sq (sin a)) + (sq (cos a))) ~~ (Complex 1.0 0.0)
 > True

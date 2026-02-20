@@ -1,8 +1,8 @@
--- stats-tests.dx
+# stats-tests.dx
 
 import stats
 
--- LogSpace Float
+# LogSpace Float
 
 rp = [0.1, 0.3, 0.2, 0.1]
 nnp = map f_to_ls rp
@@ -37,7 +37,7 @@ ls_to_f (divide (f_to_ls 0.4) (f_to_ls 0.5)) ~~ 0.8
 > True
 
 
--- Log-sum-exp
+# Log-sum-exp
 
 Exp (-infinity) + Exp (-infinity)
 > LogSpace(-inf)
@@ -73,9 +73,9 @@ is_infinite nan
 > False
 
 
--- mainly cross-checking against results from R
+# mainly cross-checking against results from R
 
--- bernoulli
+# bernoulli
 
 ln (density (Bernoulli 0.6) True) ~~ -0.5108256
 > True
@@ -98,7 +98,7 @@ quantile (Bernoulli 0.6) 0.41 == True
 rand_vec 5 (\k. draw (Bernoulli 0.6) k) (new_key 0) :: Fin 5=>Bool
 > [False, True, True, True, True]
 
--- binomial
+# binomial
 
 ln (density (Binomial 10 0.4) 8) ~~ -4.545315
 > True
@@ -127,7 +127,7 @@ quantile (Binomial 10 0.4) 0.5 == 4
 rand_vec 5 (\k. draw (Binomial 10 0.4) k) (new_key 0) :: Fin 5=>Nat
 > [1, 0, 7, 6, 7]
 
--- exponential
+# exponential
 
 ln (density (Exponential 2.0) 3.0) ~~ -5.306853
 > True
@@ -150,7 +150,7 @@ quantile (Exponential 2.0) 0.5 ~~ 0.3465736
 rand_vec 5 (\k. draw (Exponential 2.0) k) (new_key 0) :: Fin 5=>Float
 > [1.021143, 0.1418202, 0.09321166, 0.2130168, 0.4305491]
 
--- geometric
+# geometric
 
 ln (density (Geometric 0.1) 10) ~~ -3.25083
 > True
@@ -191,7 +191,7 @@ ln (density (Geometric 1) 2) == -infinity
 rand_vec 5 (\k. draw (Geometric 0.1) k) (new_key 0) :: Fin 5=>Nat
 > [20, 3, 2, 5, 9]
 
--- normal
+# normal
 
 ln (density (Normal 1.0 2.0) 3.0) ~~ -2.112086
 > True
@@ -205,7 +205,7 @@ ln (cumulative (Normal 1.0 2.0) 0.5) ~~ -0.9130617
 ln (survivor (Normal 1.0 2.0) 0.1) ~~ -0.3950523
 > True
 
--- poisson
+# poisson
 
 ln (density (Poisson 5.0) 8) ~~ -2.7291
 > True
@@ -228,7 +228,7 @@ quantile (Poisson 5.0) 0.7 == 6
 rand_vec 5 (\k. draw (Poisson 5.0) k) (new_key 0) :: Fin 5=>Nat
 > [4, 4, 2, 2, 7]
 
--- uniform
+# uniform
 
 ln (density (Uniform 2.0 5.0) 3.5) ~~ -1.098612
 > True
@@ -246,7 +246,7 @@ rand_vec 5 (\k. draw (Uniform 2.0 5.0) k) (new_key 0) :: Fin 5=>Float
 > [4.610805, 2.740888, 2.510233, 3.040717, 3.731907]
 
 
--- data summaries
+# data summaries
 
 mean_and_variance [2.0,3.0,4.0] ~~ (3,1)
 > True

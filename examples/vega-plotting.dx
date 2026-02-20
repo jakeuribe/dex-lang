@@ -18,11 +18,11 @@ def join (joiner: List a) (lists:n=>(List a)) : List a =
 ' A serialized JSON Value
 
 # TODO - once Dex supports recursive ADT JValue becomes Value.
-data JValue = AsJValue String
+enum JValue = AsJValue String
 
 ' Simple JSON Data Type
 
-data Value =
+enum Value =
      AsObject (List (String & JValue))
      AsArray (List JValue)
      AsString String
@@ -110,7 +110,7 @@ layout based on a grammar.
 Header = String
 
 
-data EncodingType =
+enum EncodingType =
      Quantitative
      Nominal
      Ordinal
@@ -123,7 +123,7 @@ instance Show EncodingType
          Ordinal -> "ordinal")
 
 
-data Channel =
+enum Channel =
      Y
      X
      Color
@@ -153,7 +153,7 @@ instance Show Channel
   derived from the spec.
 
 
-data Mark =
+enum Mark =
      Area
      Bar
      Circle
@@ -182,7 +182,7 @@ instance Show Mark
   To avoid specifying these, we will take in as
   JSON.
 
-data Opts a =
+enum Opts a =
      WithOpts a Value
 
 def pure (x:a) : Opts a =
@@ -200,7 +200,7 @@ def mergeOpts [ToJSON a, ToJSON b] (x : a) (y : b) : Value =
 
 
 
-data VLChart row col v =
+enum VLChart row col v =
      AsVLDescriptor (Opts Mark) v (col => ({title: Header &
                               encType: EncodingType &
                               encodings: List (Opts Channel) &
@@ -278,7 +278,7 @@ chart1 = (AsVLDescriptor (pure Bar) [("title", "Bar Graph")]
 
 ' First we will construct a Nominal variable for a class.
 
-data Class =
+enum Class =
      A
      B
      C

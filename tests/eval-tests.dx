@@ -37,9 +37,9 @@
 :p rand_int (new_key 0)
 > 431640317
 
--- :p let x = unpack range 10000
---        key = hash 0
---    in sum (for i: randint (key x[i]) 10)
+# :p let x = unpack range 10000
+#        key = hash 0
+#    in sum (for i: randint (key x[i]) 10)
 NArr = Fin 7
 
 arr = iota NArr
@@ -84,9 +84,9 @@ fun = \y. sum (map n_to_f arr) + y
    y + z
 > 3.
 
--- :p let f (x, y) = x + 2 * y;
---        z[i] = (x[i], x[i] * x[i])
---    in sum (for i. f z[i])
+# :p let f (x, y) = x + 2 * y;
+#        z[i] = (x[i], x[i] * x[i])
+#    in sum (for i. f z[i])
 :p exp 1.0
 > 2.718282
 
@@ -154,7 +154,7 @@ sum (sum xs) ~~ (cumsum2d xs)[3@_,2@_]
 :p [False, False, True]
 > [False, False, True]
 
-:p [False, True, True, False]  -- testing again because it's been flaky
+:p [False, True, True, False] # testing again because it's been flaky
 > [False, True, True, False]
 
 :p (True, False)
@@ -199,8 +199,8 @@ N4 = Fin 4
 
 mat = for i:N3 j:N4. (iota _)[i] + (10 * (iota _)[j])
 
--- :p sum for (i,j). mat[i][j]
--- > 192
+# :p sum for (i,j). mat[i][j]
+# > 192
 
 litArr = [10, 5, 3]
 
@@ -229,8 +229,8 @@ litArr = [10, 5, 3]
 :p hash (i_to_w64 123) 456
 > 0x500945c565c98701
 
-key = (w32_to_w64 (i_to_w32 320440878) .<<. 32) .|. (w32_to_w64 (i_to_w32 57701188)) -- 0x13198a2e03707344
-count = (w32_to_w64 (i_to_w32 608135816) .<<. 32) .|. (w32_to_w64 (i_to_w32 2242054355)) -- 0x243f6a8885a308d3
+key = (w32_to_w64 (i_to_w32 320440878) .<<. 32) .|. (w32_to_w64 (i_to_w32 57701188)) # 0x13198a2e03707344
+count = (w32_to_w64 (i_to_w32 608135816) .<<. 32) .|. (w32_to_w64 (i_to_w32 2242054355)) # 0x243f6a8885a308d3
 :p threefry_2x32 key count
 > 0xc4923a9c483df7a0
 
@@ -326,9 +326,9 @@ count = (w32_to_w64 (i_to_w32 608135816) .<<. 32) .|. (w32_to_w64 (i_to_w32 2242
 :p [(for i:(Fin 1). (False, for j:(Fin 2). 1.0)), [(True, for k:(Fin 2) . 2.0)]]
 > [[(False, [1., 1.])], [(True, [2., 2.])]]
 
--- TODO: parse negative integer literals
--- :p (mod 5 3, mod 7 3, mod (-1) 3, mod -5 3)
--- > (2, 1, 2, 1)
+# TODO: parse negative integer literals
+# :p (mod 5 3, mod 7 3, mod (-1) 3, mod -5 3)
+# > (2, 1, 2, 1)
 
 :p [[1,2], for i. 3]
 > [[1, 2], [3, 3]]
@@ -415,15 +415,15 @@ count = (w32_to_w64 (i_to_w32 608135816) .<<. 32) .|. (w32_to_w64 (i_to_w32 2242
 :p slice([1,2,3,4,5], 2, Fin 3)
 > [3, 4, 5]
 
--- TODO: test file specifically for parse errors (including testing error messages)
+# TODO: test file specifically for parse errors (including testing error messages)
 :p
    f : (Float)->Float = \x.
-     -- line comment should be ok here
+     # line comment should be ok here
      2.0 * x
    f 1.0
 > 2.
 
--- Not sure why the ordinary `sum/for` version doesn't work anymore
+# Not sure why the ordinary `sum/for` version doesn't work anymore
 :p
     n = 3 + 7
     fsum for i:(Fin n). 1.0
@@ -492,19 +492,19 @@ count = (w32_to_w64 (i_to_w32 608135816) .<<. 32) .|. (w32_to_w64 (i_to_w32 2242
 :p select(True, from_ordinal(n=Fin 2, 0), from_ordinal(n=Fin 2, 1))
 > 0
 
--- TODO: printing (also parsing) tables with alternative index sets
--- :p
---   xs = [[1],[2]]
---   for (i,j). xs[i][j]
--- > [1, 2]@(2, 1)
+# TODO: printing (also parsing) tables with alternative index sets
+# :p
+#   xs = [[1],[2]]
+#   for (i,j). xs[i][j]
+# > [1, 2]@(2, 1)
 
 
--- TODO: injections
--- :p
---   xs = for i:5. 1.0
---   two = fromOrdinal (Fin 5) 2
---   for i:3. sum for j:(two<..). xs.(%inject(j))
--- > [2.0, 2.0, 2.0]
+# TODO: injections
+# :p
+#   xs = for i:5. 1.0
+#   two = fromOrdinal (Fin 5) 2
+#   for i:3. sum for j:(two<..). xs.(%inject(j))
+# > [2.0, 2.0, 2.0]
 
 :p
   run_state 0.0 \ref. for i:(Fin 4).
@@ -566,21 +566,21 @@ Just 1 == Just 0
 > False
 
 
--- Userspace-Bool breaks these
+# Userspace-Bool breaks these
 
--- -- Needed to avoid ambiguous type variables if both sides use the same constructor
--- def cmpEither(x:Int|Int) (y:Int|Int) : Bool = x == y
+# -- Needed to avoid ambiguous type variables if both sides use the same constructor
+# def cmpEither(x:Int|Int) (y:Int|Int) : Bool = x == y
 
--- :p cmpEither (Left 1) (Left 1)
--- > True
+# :p cmpEither (Left 1) (Left 1)
+# > True
 
--- :p cmpEither (Left 1) (Left 2)
--- > False
+# :p cmpEither (Left 1) (Left 2)
+# > False
 
--- :p cmpEither (Left 1) (Right 1)
--- > False
+# :p cmpEither (Left 1) (Right 1)
+# > False
 
--- TODO: within-module version of this (currently fails in Imp checking)
+# TODO: within-module version of this (currently fails in Imp checking)
 upperBound = sum $ for i:(Fin 4). (1::Nat)
 :p for j:(Fin upperBound). 1.0
 > [1., 1., 1., 1.]
@@ -601,7 +601,7 @@ for i:(Fin 4).
   (x, z)
 > (2, [(2, 5), (2, 5), (2, 5), (2, 5)])
 
--- TODO: re-enable these once we prevent (`(-3):Nat` occurring
+# TODO: re-enable these once we prevent (`(-3):Nat` occurring
 for i:(Fin (-3)). 1.0
 > Type error:Can't reduce type expression: (Fin -3 [])
 >
@@ -614,7 +614,7 @@ x = 2 - 4
 > x = 2 - 4
 >     ^^^^^
 
--- Make sure that we can construct and print an array using a pair index set
+# Make sure that we can construct and print an array using a pair index set
 for i:(Fin 2, Fin 2). 1.0
 > [1., 1., 1., 1.]
 
@@ -627,13 +627,13 @@ for i:(Fin 5). for j:(..i).
   ir * (ir + 1.0) / 2.0 + jr
 > [[0.], [1., 2.], [3., 4., 5.], [6., 7., 8., 9.], [10., 11., 12., 13., 14.]]
 
--- TODO: fix!
--- -- Exercise the use of free variables in the sum solver
--- :p
---   n = 2 + 2
---   x = for i:(Fin n). for j:(..i). 1.0
---   sum $ for i. sum x.i
--- > 10.0
+# TODO: fix!
+# -- Exercise the use of free variables in the sum solver
+# :p
+#   n = 2 + 2
+#   x = for i:(Fin n). for j:(..i). 1.0
+#   sum $ for i. sum x.i
+# > 10.0
 
 
 :p 1 + 2
@@ -657,32 +657,32 @@ def newtonSolve(tol:Float, f: (Float)->Float, x0:Float) -> Float =
           x := newtonIter f $ get x
           Continue
 
--- :p newtonSolve 0.001 (\x. sq x - 2.0) 1.0
--- > 1.414216
+# :p newtonSolve 0.001 (\x. sq x - 2.0) 1.0
+# > 1.414216
 
--- :p
---   x = for i:(Fin 3). for j:(Fin 200). 1.0
---   -- Last dimension split to allow for vector loads
---   y = for i:(Fin 200). for j:(Fin 4). for h:(Fin VectorWidth). IToF $ (iota _).(i,j,h)
---   z = yield_accum \acc.
---         for l.
---           for i.
---             xil = (broadcastVector x.i.l)
---             for j.
---               acc!i!j += xil * (loadVector y.l[j])
---   for i:(Fin 3). for j:(Fin 4). storeVector z.i[j]
--- > [ [ [318400.0, 318600.0, 318800.0, 319000.0]
--- > , [319200.0, 319400.0, 319600.0, 319800.0]
--- > , [320000.0, 320200.0, 320400.0, 320600.0]
--- > , [320800.0, 321000.0, 321200.0, 321400.0] ]
--- > , [ [318400.0, 318600.0, 318800.0, 319000.0]
--- > , [319200.0, 319400.0, 319600.0, 319800.0]
--- > , [320000.0, 320200.0, 320400.0, 320600.0]
--- > , [320800.0, 321000.0, 321200.0, 321400.0] ]
--- > , [ [318400.0, 318600.0, 318800.0, 319000.0]
--- > , [319200.0, 319400.0, 319600.0, 319800.0]
--- > , [320000.0, 320200.0, 320400.0, 320600.0]
--- > , [320800.0, 321000.0, 321200.0, 321400.0] ] ]
+# :p
+#   x = for i:(Fin 3). for j:(Fin 200). 1.0
+#   -- Last dimension split to allow for vector loads
+#   y = for i:(Fin 200). for j:(Fin 4). for h:(Fin VectorWidth). IToF $ (iota _).(i,j,h)
+#   z = yield_accum \acc.
+#         for l.
+#           for i.
+#             xil = (broadcastVector x.i.l)
+#             for j.
+#               acc!i!j += xil * (loadVector y.l[j])
+#   for i:(Fin 3). for j:(Fin 4). storeVector z.i[j]
+# > [ [ [318400.0, 318600.0, 318800.0, 319000.0]
+# > , [319200.0, 319400.0, 319600.0, 319800.0]
+# > , [320000.0, 320200.0, 320400.0, 320600.0]
+# > , [320800.0, 321000.0, 321200.0, 321400.0] ]
+# > , [ [318400.0, 318600.0, 318800.0, 319000.0]
+# > , [319200.0, 319400.0, 319600.0, 319800.0]
+# > , [320000.0, 320200.0, 320400.0, 320600.0]
+# > , [320800.0, 321000.0, 321200.0, 321400.0] ]
+# > , [ [318400.0, 318600.0, 318800.0, 319000.0]
+# > , [319200.0, 319400.0, 319600.0, 319800.0]
+# > , [320000.0, 320200.0, 320400.0, 320600.0]
+# > , [320800.0, 321000.0, 321200.0, 321400.0] ] ]
 
 :p
   fs = for i:(Fin 4).
@@ -708,12 +708,12 @@ def newtonSolve(tol:Float, f: (Float)->Float, x0:Float) -> Float =
   (f 5, w)
 > (7, 2.)
 
--- def add(n : Type) ?-> (a : n=>Float) (b : n=>Float) : n=>Float =
---   (tile (\t:(Tile n (Fin VectorWidth)). storeVector $ loadTile t a + loadTile t b)
---         (\i:n. a.i + b.i))
--- toAdd = for _:(Fin 10). 1.0
--- add toAdd toAdd
--- > [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+# def add(n : Type) ?-> (a : n=>Float) (b : n=>Float) : n=>Float =
+#   (tile (\t:(Tile n (Fin VectorWidth)). storeVector $ loadTile t a + loadTile t b)
+#         (\i:n. a.i + b.i))
+# toAdd = for _:(Fin 10). 1.0
+# add toAdd toAdd
+# > [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
 
 arr2d = for i:(Fin 2). for j:(Fin 2). (iota _)[(i,j)]
 arr2d[1@_]
@@ -800,15 +800,15 @@ s1 = "hello world"
   sum zs + sum zs
 > 12
 
--- triLit : (i:Fin 4)=>(..i)=>Int =
---   [ coerce_table _ [0]
---   , coerce_table _ [1, 2]
---   , coerce_table _ [3, 4, 5]
---   , coerce_table _ [6, 7, 8, 9] ]
--- triLit
--- > [[0], [1, 2], [3, 4, 5], [6, 7, 8, 9]]
+# triLit : (i:Fin 4)=>(..i)=>Int =
+#   [ coerce_table _ [0]
+#   , coerce_table _ [1, 2]
+#   , coerce_table _ [3, 4, 5]
+#   , coerce_table _ [6, 7, 8, 9] ]
+# triLit
+# > [[0], [1, 2], [3, 4, 5], [6, 7, 8, 9]]
 
--- @noinline
+# @noinline
 def fromLeftFloat(x:(Float `Either` Int)) -> Float =
   case x of
     Left x' -> x'
@@ -840,7 +840,7 @@ def f5(x:Int) -> Int = f4 $ f4 $ f4 $ f4 $ f4 $ f4 $ f4 $ f4 $ f4 $ f4 $ x
 def f6(x:Int) -> Int = f5 $ f5 $ f5 $ f5 $ f5 $ f5 $ f5 $ f5 $ f5 $ f5 $ x
 
 
--- regression test for #1229 - checks that constraints and data args can be interleaved
+# regression test for #1229 - checks that constraints and data args can be interleaved
 @noinline
 def interleave_args(x:Float, xs:n=>Float) -> Float given (n|Ix) =
   x + sum xs
@@ -849,11 +849,11 @@ interleave_args(1.0, [2.0, 3.0])
 > 6.
 
 
--- This will compile extremely slowly if non-inlining is broken
+# This will compile extremely slowly if non-inlining is broken
 :p f6 0
 > 100000
 
--- Testing integer powers
+# Testing integer powers
 
 :p intpow 10 2
 > 100
@@ -882,7 +882,7 @@ f x2
 grad f x2
 > 6.2
 
--- Integer utility tests
+# Integer utility tests
 
 :p map is_power_of_2 [0, 1, 2, 3, 256, 1023, 1024, 1024*1024, 1024*1024 + 1]
 > [False, True, True, False, True, False, True, True, False]
@@ -910,8 +910,8 @@ interface AssociatedWithTwo(a:Type, c:Type)
 instance AssociatedWithTwo(Int, Float)
   def value2() = 8
 
--- TODO: the source location for this error message is a bit off since we added
--- n-ary applications.
+# TODO: the source location for this error message is a bit off since we added
+# n-ary applications.
 value2(a=Int, c=Float)
 > 8
 value2(a=Float, c=Int)
@@ -920,17 +920,17 @@ value2(a=Float, c=Int)
 > value2(a=Float, c=Int)
 > ^^^^^^^^^^^^^^^^^^^^^^
 
--- XXX: Disabled because we now compile expressions like these to blocks, which
--- need a type that makes sense in the top scope. We may revisit that choice.
--- -- checks that mixing non-data values into the results of case expressions don't
--- -- prevent them from later being used in types.
--- :p
---   x = 1 + 1
---   (n, _) = case x > 1 of
---     True  -> (x, \x:Int. x)
---     False -> (x, \x:Int. x)
---   for i:(Fin n). 1.0
--- > [1., 1.]
+# XXX: Disabled because we now compile expressions like these to blocks, which
+# need a type that makes sense in the top scope. We may revisit that choice.
+# -- checks that mixing non-data values into the results of case expressions don't
+# -- prevent them from later being used in types.
+# :p
+#   x = 1 + 1
+#   (n, _) = case x > 1 of
+#     True  -> (x, \x:Int. x)
+#     False -> (x, \x:Int. x)
+#   for i:(Fin n). 1.0
+# > [1., 1.]
 
 1.0e-4
 > 0.0001
@@ -966,7 +966,7 @@ def all_prefixes(s:String)  -> List String =
 :p all_prefixes "fence"
 > (AsList 6 ["", "f", "fe", "fen", "fenc", "fence"])
 
--- NonEmpty tests
+# NonEmpty tests
 
 first_ix :: ()
 > ()
@@ -987,7 +987,7 @@ first_ix :: ((() `Either` Fin 2) `Either` Fin 3)
 > (Left (Left ()))
 
 
--- Check that empty sets can't satisfy NonEmpty
+# Check that empty sets can't satisfy NonEmpty
 
 first_ix :: (Fin 0)
 > Type error:Couldn't synthesize a class dictionary for: (NonEmpty (Fin 0))
@@ -1008,7 +1008,7 @@ first_ix :: (Fin 0, ())
 > ^^^^^^^^^
 
 
--- Subset tests
+# Subset tests
 
 project(to=(), inject(to=(() `Either` Fin 2), ()))
 > (Just ())
@@ -1025,7 +1025,7 @@ unsafe_project(to=(), inject(to=(Fin 2 `Either` ()), ()))
 :p unsafe_coerce(to=Fin 1 => (Nat, Nat), ([1], [2]))
 > [(1, 2)]
 
--- Stack tests
+# Stack tests
 
 :p
   with_stack Float \stack.
@@ -1043,7 +1043,7 @@ unsafe_project(to=(), inject(to=(Fin 2 `Either` ()), ()))
     stack.read()
 > (AsList 3 [(1., [1., 2.]), (10., [10., 20.]), (100., [100., 200.])])
 
--- Checks for O(N^2) behavior
+# Checks for O(N^2) behavior
 :p
   n = 1000000
   with_stack Float \stack.
@@ -1054,15 +1054,15 @@ unsafe_project(to=(), inject(to=(Fin 2 `Either` ()), ()))
     sum xs
 > 9000000.
 
--- Non-data case scrutinee tests
+# Non-data case scrutinee tests
 
--- Check that we can print out a sum-typed non-data value
+# Check that we can print out a sum-typed non-data value
 Just f64_to_f
 > (Just <function of type ((x:Float64) -> Float32)>)
 
--- Check that we can print out a sum-typed non-data value that came
--- from a case (this tickles ACase colliding with the code generated
--- to print).  The @noinline defeats case-of-known-constructor.
+# Check that we can print out a sum-typed non-data value that came
+# from a case (this tickles ACase colliding with the code generated
+# to print).  The @noinline defeats case-of-known-constructor.
 @noinline
 def id_bool(x:Bool) -> Bool = x
 
@@ -1071,8 +1071,8 @@ case (id_bool True) of
   False -> Nothing
 > (Just <function of type ((x:Float64) -> Float32)>)
 
--- Check that we can later scrutinize a sum-typed non-data value that
--- came from a case.
+# Check that we can later scrutinize a sum-typed non-data value that
+# came from a case.
 foo = case (id_bool True) of
   True -> Just f64_to_f
   False -> Nothing
@@ -1082,14 +1082,14 @@ case foo of
   Nothing -> 2.0
 > 1.
 
--- Non-data catch tests
+# Non-data catch tests
 
--- Should be able to catch a function
--- This is a regression test for Issue #1193.
+# Should be able to catch a function
+# This is a regression test for Issue #1193.
 catch \. f64_to_f
 > (Just <function of type ((x:Float64) -> Float32)>)
 
--- Should be able to catch a function-valued computation that fails
+# Should be able to catch a function-valued computation that fails
 catch \.
   x = if True
     then throw()
@@ -1097,7 +1097,7 @@ catch \.
   \y. x + y
 > Nothing
 
--- Should be able to apply a function that came out of a catch
+# Should be able to apply a function that came out of a catch
 frob : (Maybe ((Float) -> Float)) = catch \. \x. x + x
 
 case frob of
@@ -1106,9 +1106,9 @@ case frob of
 > 4.
 
 
--- regression tests for #1212
-data Rectangle(a) = AsRectangle(n:Nat, m:Nat, elts:(Fin n => Fin m => a))
-data Brick(a) = AsBrick(n:Nat, m:Nat, l:Nat, elts:(Fin n => Fin m => Fin l => a))
+# regression tests for #1212
+enum Rectangle(a) = AsRectangle(n:Nat, m:Nat, elts:(Fin n => Fin m => a))
+enum Brick(a) = AsBrick(n:Nat, m:Nat, l:Nat, elts:(Fin n => Fin m => Fin l => a))
 
 def mk_rect(n:Nat) -> Rectangle Nat =
   AsRectangle _ _ $ for i:(Fin n) j:(Fin n). ordinal i

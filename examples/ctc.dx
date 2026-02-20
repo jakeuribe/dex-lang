@@ -23,7 +23,7 @@ Here we create a custom datatype and index set
 that interleaves the elements of a table with another set
 of values representing all the spaces in between those elements.
 
-data FenceAndPosts(n|Ix) =
+enum FenceAndPosts(n|Ix) =
   Fence(n)
   Posts(Post n)
 

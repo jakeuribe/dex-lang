@@ -187,7 +187,7 @@ linFstArg x y = x / y
 linUnary : Float --o Float
 linUnary x = linFstArg x 1.0
 
--- Nonlinear because of defaulting rules
+# Nonlinear because of defaulting rules
 :t
    f x = x + x
    f

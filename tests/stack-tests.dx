@@ -11,7 +11,7 @@ with_stack Nat \stack.
   stack.push 11
   stack.pop()
   stack.pop()
-  stack.pop()     -- Check that popping an empty stack is OK.
+  stack.pop() # Check that popping an empty stack is OK.
   stack.push 20
   stack.push 21
   stack.pop()

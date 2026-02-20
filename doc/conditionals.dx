@@ -43,7 +43,7 @@ To wit:
 
 :p
   yield_accum (AddMonoid Float) \ref.
-    -- Two-armed `if` with `then` and the consequent both inline.
+    # Two-armed `if` with `then` and the consequent both inline.
     x = if False then 1. else 3.
     if False then ref += 100. else
       ref += 1.
@@ -55,7 +55,7 @@ To wit:
         ref += 1.
         ref += 2.
 
-    -- Two-armed `if` with `then` indented but the consequent inline.
+    # Two-armed `if` with `then` indented but the consequent inline.
     y = if False
           then 1. else 3.
     if False
@@ -71,7 +71,7 @@ To wit:
         ref += 1.
         ref += 2.
 
-    -- Two-armed `if` with `then` and the consequent both indented.
+    # Two-armed `if` with `then` and the consequent both indented.
     if False
       then
         ref += 100.

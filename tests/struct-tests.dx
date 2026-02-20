@@ -85,7 +85,7 @@ struct MissingConstraint(n) =
 >   thing : n=>Float
 >           ^^^^^^^^
 
-data AnotherMissingConstraint(n) =
+enum AnotherMissingConstraint(n) =
   MkAnotherMissingConstraint(n=>Float)
 > Type error:Couldn't synthesize a class dictionary for: (Ix n)
 >
