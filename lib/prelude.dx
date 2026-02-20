@@ -466,6 +466,9 @@ def neg( v:a)          -> a given (a|VSpace) = (-1.0) .* v
 instance VSpace(Float)
   def (.*)(x, y) = x * y
 
+instance VSpace(Float64)
+  def (.*)(x, y) = x * y
+
 instance VSpace(n=>a) given (a|VSpace, n|Ix)
   def (.*)(s, xs) = for i. s .* xs[i]
 
