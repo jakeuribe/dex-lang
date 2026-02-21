@@ -1,0 +1,123 @@
+'# Markov Chain Monte Carlo
+
+'## General MCMC utilities
+
+import plot
+
+LogProb : Type = Float
+
+def runChain(
+    initialize: (Key) -> a,
+    step:       (Key, a) -> a,
+    numSamples: Nat,
+    k:Key
+    ) -> Fin numSamples => a  given (a|Data) =
+  [k1, k2] = split_key(n=2, k)
+  with_state (initialize k1) \s.
+    for i:(Fin numSamples).
+      x = step (ixkey k2 i) (get s)
+      s := x
+      x
+
+def propose(
+    logDensity: (a) -> LogProb,
+    cur:        a,
+    proposal:   a,
+    k:          Key
+    ) -> a given (a:Type) =
+  accept = logDensity proposal > (logDensity cur + log (rand k))
+  select accept proposal cur
+
+def meanAndCovariance(xs:n=>d=>Float) -> (d=>Float, d=>d=>Float) given (n|Ix, d|Ix) =
+   xsMean :    d=>Float = (for i:d. sum for j:n. xs[j,i]) / n_to_f (size n)
+   xsCov  : d=>d=>Float = (for i:d i':d. sum for j:n.
+                           (xs[j,i'] - xsMean[i']) *
+                           (xs[j,i ] - xsMean[i ])   ) / (n_to_f (size n) - 1)
+   (xsMean, xsCov)
+
+'## Metropolis-Hastings implementation
+
+MHParams : Type = Float  # step size
+
+def mhStep(
+    stepSize: MHParams,
+    logProb: (d=>Float) -> LogProb,
+    k:Key,
+    x:d=>Float
+    ) -> d=>Float given (d|Ix) =
+  [k1, k2] = split_key(n=2, k)
+  proposal = x + stepSize .* randn_vec k1
+  propose logProb x proposal k2
+
+'## HMC implementation
+
+struct HMCParams =
+  nsteps : Nat
+  dt     : Float
+
+struct HMCState(a|VSpace) =
+  x: a
+  p: a
+
+def leapfrogIntegrate(
+    params:  HMCParams,
+    logProb: (a) -> LogProb,
+    init:    HMCState a
+    ) -> HMCState a given (a|VSpace) =
+  x = init.x + (0.5 * params.dt) .* init.p
+  final = apply_n params.nsteps HMCState(x, init.p) \old.
+    pNew = old.p + params.dt .* grad logProb old.x
+    xNew = old.x + params.dt .* pNew
+    HMCState(xNew, pNew)
+  p = final.p + (0.5 * params.dt) .* grad logProb final.x
+  HMCState(final.x, p)
+
+def hmcStep(
+    params:  HMCParams,
+    logProb: (d=>Float) -> LogProb,
+    k:       Key,
+    x:       d=>Float
+    ) -> d=>Float given (d|Ix) =
+  def hamiltonian(s:HMCState (d=>Float)) -> Float =
+    logProb s.x - 0.5 * vdot s.p s.p
+  [k1, k2] = split_key(n=2, k)
+  p = randn_vec k1 :: d => Float
+  proposal = leapfrogIntegrate params logProb HMCState(x, p)
+  final = propose hamiltonian HMCState(x, p) proposal k2
+  final.x
+
+'## Test it out
+
+'Generate samples from a multivariate normal distribution N([1.5, 2.5], [[1., 0.], [0., 0.05]]).
+
+def myLogProb(x:(Fin 2)=>Float) -> LogProb =
+  x' = x - [1.5, 2.5]
+  neg $ 0.5 * inner x' [[1.,0.],[0.,20.]] x'
+def myInitializer(k:Key) -> Fin 2 => Float =
+  randn_vec(k)
+
+numSamples : Nat =
+  if dex_test_mode()
+    then 1000
+    else 10000
+k0 = new_key 1
+
+mhParams = 0.1
+mhSamples  = runChain myInitializer (\k x. mhStep  mhParams myLogProb k x) numSamples k0
+
+:p meanAndCovariance mhSamples
+> ([2.082871, 2.504329], [[1.205363, 0.009561179], [0.009561179, 0.0497679]])
+
+:html show_plot $ y_plot $
+  slice (each mhSamples head) 0 (Fin 1000)
+> <html output>
+
+hmcParams = HMCParams(10, 0.1)
+hmcSamples = runChain myInitializer (\k x. hmcStep hmcParams myLogProb k x) numSamples k0
+
+:p meanAndCovariance hmcSamples
+> ([1.548751, 2.499404], [[1.021255, 0.003060933], [0.003060933, 0.05112814]])
+
+:html show_plot $ y_plot $
+  slice (each hmcSamples head) 0 (Fin 1000)
+> <html output>

@@ -1,0 +1,36 @@
+'# Monte Carlo Estimates of Pi
+
+'Consider the unit circle centered at the origin.
+
+'Consider the first quadrant: the unit circle quadrant and its $1 \times 1$ bounding unit square.
+
+'$$\text{Area of unit circle quadrant: } \\\\ A_{quadrant} = \frac{\pi r^2}{4} = \frac{\pi}{4}$$
+
+'$$\text{Area of unit square: } \\\\ A_{square} = 1$$
+
+'$$\text{Compute } \pi \text{ via ratios: } \\\\ \frac{A_{quadrant}}{A_{square}} = \frac{\pi}{4}, \\; \pi = 4 \thinspace \frac{A_{quadrant}}{A_{square}} $$
+
+'To compute $\pi$, randomly sample points in the first quadrant unit square to estimate the $\frac{A_{quadrant}}{A_{square}}$ ratio. Then, multiply by $4$.
+
+def estimatePiArea(key:Key) -> Float =
+  [k1, k2] = split_key(n=2, key)
+  x = rand k1
+  y = rand k2
+  inBounds = (sq x + sq y) < 1.0
+  4.0 * b_to_f inBounds
+
+def estimatePiAvgVal(key:Key) -> Float =
+  x = rand key
+  4.0 * sqrt (1.0 - sq x)
+
+def meanAndStdDev(n:Nat, f: (Key) -> Float, key:Key) -> (Float, Float) =
+  samps = for i:(Fin n). many f key i
+  (mean samps, std samps)
+
+numSamps = 1000000
+
+:p meanAndStdDev numSamps estimatePiArea (new_key 0)
+> (3.141656, 1.64214)
+
+:p meanAndStdDev numSamps estimatePiAvgVal (new_key 0)
+> (3.145509, 0.886251)

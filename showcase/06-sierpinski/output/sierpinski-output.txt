@@ -1,0 +1,25 @@
+'# Sierpinski Triangle ("Chaos Game")
+
+import diagram
+import plot
+
+def update(points:n=>Point, key:Key, p:Point) -> Point given (n|Ix) =
+  p' = points[rand_idx key]
+  Point(0.5 * (p.x + p'.x), 0.5 * (p.y + p'.y))
+
+def runChain(n:Nat, key:Key, x0:a, f:(Key, a) -> a) -> Fin n => a given (a|Data) =
+  ref <- with_state x0
+  for i:(Fin n).
+    new = ixkey key i | f(get ref)
+    ref := new
+    new
+
+trianglePoints : (Fin 3)=>Point = [Point(0.0, 0.0), Point(1.0, 0.0), Point(0.5, sqrt 0.75)]
+
+n = 3000
+points = runChain n (new_key 0) (Point 0.0 0.0) \k p. update trianglePoints k p
+
+(xs, ys) = unzip for i:(Fin n). (points[i].x, points[i].y)
+
+:html show_plot $ xy_plot xs ys
+> <html output>
