@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - main
+      - 'claude/**'
 
 jobs:
+  # Full build from source (main branch only, needs LLVM + Stack)
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -47,4 +50,24 @@ jobs:
           branch: gh-pages # The branch the action should deploy to.
           folder: pages/dex-lang # The folder the action should deploy.
           clean: false     # If true, automatically remove deleted files from the deploy branch.
+          commit-message: Updating gh-pages from ${{ github.sha }}
+
+  # Deploy pre-built pages from docs/ (feature branches)
+  deploy-prebuilt:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v4
+
+    - name: Deploy to GitHub Pages
+      uses: "JamesIves/github-pages-deploy-action@3dbacc7e69578703f91f077118b3475862cb09b8" # 4.1.0
+      with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gh-pages
+          folder: docs/dex-lang
+          clean: false
           commit-message: Updating gh-pages from ${{ github.sha }}
