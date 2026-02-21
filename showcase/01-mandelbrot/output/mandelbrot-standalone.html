@@ -1,0 +1,66 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+body{font-family:"SF Mono","Fira Code",monospace;max-width:960px;margin:0 auto;padding:20px;background:#0d1117;color:#c9d1d9}
+.code-block{background:#161b22;padding:12px;margin:6px 0;border-radius:6px;overflow-x:auto;font-size:14px}
+.prose-block{padding:8px 0} .prose-block h1{color:#58a6ff;border-bottom:1px solid #30363d;padding-bottom:8px}
+.prose-block h2{color:#58a6ff}
+.result{background:#1c2128;padding:10px;margin:2px 0;border-left:3px solid #3fb950;border-radius:0 4px 4px 0;font-size:13px}
+.error{background:#1c0000;padding:10px;margin:2px 0;border-left:3px solid #f85149;border-radius:0 4px 4px 0}
+img.plot-img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:4px;border:1px solid #30363d}
+svg{max-width:100%;height:auto;display:block;margin:12px auto}
+pre{margin:0;white-space:pre-wrap}
+span{white-space:pre-wrap}
+</style></head><body>
+<h1 style="color:#58a6ff;text-align:center">01-mandelbrot</h1><hr style="border-color:#30363d">
+<div class="code-block"><span class="comment"></span></div>
+<div class="prose-block"><h1>Mandelbrot Set</h1>
+</div>
+<div class="code-block"><span class="keyword" id="span_2_1">import</span><span> </span><span id="span_2_2">complex</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_3_3">import</span><span> </span><span id="span_3_4">plot</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># Escape time algorithm
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_7_6">def</span><span> </span><span id="span_7_7">update</span><span class="symbol" id="span_7_9">(</span><span id="span_7_10">c</span><span class="symbol" id="span_7_11">:</span><span id="span_7_13">Complex</span><span class="symbol" id="span_7_14">,</span><span> </span><span id="span_7_15">z</span><span class="symbol" id="span_7_16">:</span><span id="span_7_18">Complex</span><span class="symbol" id="span_7_19">)</span><span> </span><span class="symbol" id="span_7_20">-&gt;</span><span> </span><span id="span_7_21">Complex</span><span> </span><span class="symbol" id="span_7_22">=</span><span> </span><span id="span_7_23">c</span><span> </span><span class="symbol" id="span_7_24">+</span><span> </span><span class="symbol" id="span_7_27">(</span><span id="span_7_28">z</span><span> </span><span class="symbol" id="span_7_29">*</span><span> </span><span id="span_7_31">z</span><span class="symbol" id="span_7_32">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_9_34">tol</span><span> </span><span class="symbol" id="span_9_35">=</span><span> </span><span class="literal" id="span_9_36">2.0</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_10_38">def</span><span> </span><span id="span_10_39">inBounds</span><span class="symbol" id="span_10_41">(</span><span id="span_10_42">z</span><span class="symbol" id="span_10_43">:</span><span id="span_10_45">Complex</span><span class="symbol" id="span_10_46">)</span><span> </span><span class="symbol" id="span_10_47">-&gt;</span><span> </span><span id="span_10_48">Bool</span><span> </span><span class="symbol" id="span_10_49">=</span><span> </span><span id="span_10_50">complex_abs</span><span class="symbol" id="span_10_53">(</span><span id="span_10_54">z</span><span class="symbol" id="span_10_55">)</span><span> </span><span class="symbol" id="span_10_56">&lt;</span><span> </span><span id="span_10_58">tol</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_12_60">def</span><span> </span><span id="span_12_61">escapeTime</span><span class="symbol" id="span_12_63">(</span><span id="span_12_64">c</span><span class="symbol" id="span_12_65">:</span><span id="span_12_67">Complex</span><span class="symbol" id="span_12_68">)</span><span> </span><span class="symbol" id="span_12_69">-&gt;</span><span> </span><span id="span_12_70">Nat</span><span> </span><span class="symbol" id="span_12_71">=</span><span class="comment">
+  </span><span id="span_12_74">z</span><span> </span><span class="symbol" id="span_12_75">&lt;-</span><span> </span><span id="span_12_76">with_state</span><span class="symbol" id="span_12_79">(</span><span id="span_12_80">zero</span><span> </span><span class="symbol" id="span_12_81">::</span><span> </span><span id="span_12_83">Complex</span><span class="symbol" id="span_12_84">)</span><span class="comment">
+  </span><span id="span_12_86">bounded_iter</span><span class="symbol" id="span_12_89">(</span><span class="literal" id="span_12_90">1000</span><span class="symbol" id="span_12_91">,</span><span> </span><span class="literal" id="span_12_92">1000</span><span class="symbol" id="span_12_93">)</span><span> </span><span class="symbol" id="span_12_96">\</span><span id="span_12_97">i</span><span class="symbol" id="span_12_98">.</span><span class="comment">
+    </span><span class="keyword" id="span_12_102">case</span><span> </span><span id="span_12_103">inBounds</span><span class="symbol" id="span_12_106">(</span><span id="span_12_107">get</span><span class="symbol" id="span_12_110">(</span><span id="span_12_111">z</span><span class="symbol" id="span_12_112">)</span><span class="symbol" id="span_12_113">)</span><span> </span><span class="keyword" id="span_12_114">of</span><span class="comment">
+      </span><span id="span_12_115">False</span><span> </span><span class="symbol" id="span_12_116">-&gt;</span><span> </span><span id="span_12_117">Done</span><span class="symbol" id="span_12_120">(</span><span id="span_12_121">i</span><span class="symbol" id="span_12_122">)</span><span class="comment">
+      </span><span id="span_12_123">True</span><span> </span><span class="symbol" id="span_12_124">-&gt;</span><span class="comment">
+        </span><span id="span_12_127">z</span><span> </span><span class="symbol" id="span_12_128">:=</span><span> </span><span id="span_12_130">update</span><span class="symbol" id="span_12_133">(</span><span id="span_12_134">c</span><span class="symbol" id="span_12_135">,</span><span> </span><span id="span_12_136">get</span><span class="symbol" id="span_12_139">(</span><span id="span_12_140">z</span><span class="symbol" id="span_12_141">)</span><span class="symbol" id="span_12_142">)</span><span class="comment">
+        </span><span id="span_12_144">Continue</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># Evaluate on a grid and plot the results
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_16_146">xs</span><span> </span><span class="symbol" id="span_16_147">=</span><span> </span><span id="span_16_148">linspace</span><span class="symbol" id="span_16_151">(</span><span id="span_16_152">Fin</span><span> </span><span class="literal" id="span_16_154">300</span><span class="symbol" id="span_16_155">,</span><span> </span><span class="symbol" id="span_16_156">-</span><span class="literal" id="span_16_158">2.0</span><span class="symbol" id="span_16_159">,</span><span> </span><span class="literal" id="span_16_160">1.0</span><span class="symbol" id="span_16_161">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_17_163">ys</span><span> </span><span class="symbol" id="span_17_164">=</span><span> </span><span id="span_17_165">linspace</span><span class="symbol" id="span_17_168">(</span><span id="span_17_169">Fin</span><span> </span><span class="literal" id="span_17_171">200</span><span class="symbol" id="span_17_172">,</span><span> </span><span class="symbol" id="span_17_173">-</span><span class="literal" id="span_17_175">1.0</span><span class="symbol" id="span_17_176">,</span><span> </span><span class="literal" id="span_17_177">1.0</span><span class="symbol" id="span_17_178">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_19_180">escapeGrid</span><span> </span><span class="symbol" id="span_19_181">=</span><span> </span><span id="span_19_182">each</span><span class="symbol" id="span_19_185">(</span><span id="span_19_186">ys</span><span class="symbol" id="span_19_187">)</span><span> </span><span class="symbol" id="span_19_190">\</span><span id="span_19_191">y</span><span class="symbol" id="span_19_192">.</span><span> </span><span id="span_19_193">each</span><span> </span><span id="span_19_195">xs</span><span> </span><span class="symbol" id="span_19_198">\</span><span id="span_19_199">x</span><span class="symbol" id="span_19_200">.</span><span> </span><span id="span_19_201">n_to_f</span><span class="symbol" id="span_19_204">(</span><span id="span_19_205">escapeTime</span><span class="symbol" id="span_19_208">(</span><span id="span_19_209">Complex</span><span class="symbol" id="span_19_212">(</span><span id="span_19_213">x</span><span class="symbol" id="span_19_214">,</span><span> </span><span id="span_19_215">y</span><span class="symbol" id="span_19_216">)</span><span class="symbol" id="span_19_217">)</span><span class="symbol" id="span_19_218">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">:</span><span id="span_21_219">html</span><span> </span><span id="span_21_220">matshow</span><span class="symbol" id="span_21_223">(</span><span class="symbol" id="span_21_224">-</span><span id="span_21_226">escapeGrid</span><span class="symbol" id="span_21_227">)</span><span class="comment">
+</span></div>
+<div class="result"><img class="plot-img" src="data:image/png;base64, "></div>
+</body></html>

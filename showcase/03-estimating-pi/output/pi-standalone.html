@@ -1,0 +1,61 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+body{font-family:"SF Mono","Fira Code",monospace;max-width:960px;margin:0 auto;padding:20px;background:#0d1117;color:#c9d1d9}
+.code-block{background:#161b22;padding:12px;margin:6px 0;border-radius:6px;overflow-x:auto;font-size:14px}
+.prose-block{padding:8px 0} .prose-block h1{color:#58a6ff;border-bottom:1px solid #30363d;padding-bottom:8px}
+.prose-block h2{color:#58a6ff}
+.result{background:#1c2128;padding:10px;margin:2px 0;border-left:3px solid #3fb950;border-radius:0 4px 4px 0;font-size:13px}
+.error{background:#1c0000;padding:10px;margin:2px 0;border-left:3px solid #f85149;border-radius:0 4px 4px 0}
+img.plot-img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:4px;border:1px solid #30363d}
+svg{max-width:100%;height:auto;display:block;margin:12px auto}
+pre{margin:0;white-space:pre-wrap}
+span{white-space:pre-wrap}
+</style></head><body>
+<h1 style="color:#58a6ff;text-align:center">03-estimating-pi</h1><hr style="border-color:#30363d">
+<div class="code-block"><span class="comment"></span></div>
+<div class="prose-block"><h1>Monte Carlo Estimates of Pi</h1>
+</div>
+<div class="prose-block"><p>Consider the unit circle centered at the origin.</p>
+</div>
+<div class="prose-block"><p>Consider the first quadrant: the unit circle quadrant and its $1 \times 1$ bounding unit square.</p>
+</div>
+<div class="prose-block"><p>$$\text{Area of unit circle quadrant: } \\ A_{quadrant} = \frac{\pi r^2}{4} = \frac{\pi}{4}$$</p>
+</div>
+<div class="prose-block"><p>$$\text{Area of unit square: } \\ A_{square} = 1$$</p>
+</div>
+<div class="prose-block"><p>$$\text{Compute } \pi \text{ via ratios: } \\ \frac{A_{quadrant}}{A_{square}} = \frac{\pi}{4}, \; \pi = 4 \thinspace \frac{A_{quadrant}}{A_{square}} $$</p>
+</div>
+<div class="prose-block"><p>To compute $\pi$, randomly sample points in the first quadrant unit square to estimate the $\frac{A_{quadrant}}{A_{square}}$ ratio. Then, multiply by $4$.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_8_2">def</span><span> </span><span id="span_8_3">estimatePiArea</span><span class="symbol" id="span_8_5">(</span><span id="span_8_6">key</span><span class="symbol" id="span_8_7">:</span><span id="span_8_9">Key</span><span class="symbol" id="span_8_10">)</span><span> </span><span class="symbol" id="span_8_11">-&gt;</span><span> </span><span id="span_8_12">Float</span><span> </span><span class="symbol" id="span_8_13">=</span><span class="comment">
+  </span><span class="symbol" id="span_8_17">[</span><span id="span_8_18">k1</span><span class="symbol" id="span_8_19">,</span><span> </span><span id="span_8_20">k2</span><span class="symbol" id="span_8_21">]</span><span> </span><span class="symbol" id="span_8_22">=</span><span> </span><span id="span_8_23">split_key</span><span class="symbol" id="span_8_26">(</span><span id="span_8_27">n</span><span class="symbol" id="span_8_28">=</span><span class="literal" id="span_8_30">2</span><span class="symbol" id="span_8_31">,</span><span> </span><span id="span_8_32">key</span><span class="symbol" id="span_8_33">)</span><span class="comment">
+  </span><span id="span_8_35">x</span><span> </span><span class="symbol" id="span_8_36">=</span><span> </span><span id="span_8_37">rand</span><span> </span><span id="span_8_39">k1</span><span class="comment">
+  </span><span id="span_8_41">y</span><span> </span><span class="symbol" id="span_8_42">=</span><span> </span><span id="span_8_43">rand</span><span> </span><span id="span_8_45">k2</span><span class="comment">
+  </span><span id="span_8_47">inBounds</span><span> </span><span class="symbol" id="span_8_48">=</span><span> </span><span class="symbol" id="span_8_50">(</span><span id="span_8_51">sq</span><span> </span><span id="span_8_53">x</span><span> </span><span class="symbol" id="span_8_54">+</span><span> </span><span id="span_8_56">sq</span><span> </span><span id="span_8_58">y</span><span class="symbol" id="span_8_59">)</span><span> </span><span class="symbol" id="span_8_60">&lt;</span><span> </span><span class="literal" id="span_8_62">1.0</span><span class="comment">
+  </span><span class="literal" id="span_8_64">4.0</span><span> </span><span class="symbol" id="span_8_65">*</span><span> </span><span id="span_8_67">b_to_f</span><span> </span><span id="span_8_69">inBounds</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_10_71">def</span><span> </span><span id="span_10_72">estimatePiAvgVal</span><span class="symbol" id="span_10_74">(</span><span id="span_10_75">key</span><span class="symbol" id="span_10_76">:</span><span id="span_10_78">Key</span><span class="symbol" id="span_10_79">)</span><span> </span><span class="symbol" id="span_10_80">-&gt;</span><span> </span><span id="span_10_81">Float</span><span> </span><span class="symbol" id="span_10_82">=</span><span class="comment">
+  </span><span id="span_10_85">x</span><span> </span><span class="symbol" id="span_10_86">=</span><span> </span><span id="span_10_87">rand</span><span> </span><span id="span_10_89">key</span><span class="comment">
+  </span><span class="literal" id="span_10_91">4.0</span><span> </span><span class="symbol" id="span_10_92">*</span><span> </span><span id="span_10_94">sqrt</span><span> </span><span class="symbol" id="span_10_97">(</span><span class="literal" id="span_10_98">1.0</span><span> </span><span class="symbol" id="span_10_99">-</span><span> </span><span id="span_10_101">sq</span><span> </span><span id="span_10_103">x</span><span class="symbol" id="span_10_104">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_12_106">def</span><span> </span><span id="span_12_107">meanAndStdDev</span><span class="symbol" id="span_12_109">(</span><span id="span_12_110">n</span><span class="symbol" id="span_12_111">:</span><span id="span_12_113">Nat</span><span class="symbol" id="span_12_114">,</span><span> </span><span id="span_12_115">f</span><span class="symbol" id="span_12_116">:</span><span> </span><span class="symbol" id="span_12_119">(</span><span id="span_12_120">Key</span><span class="symbol" id="span_12_121">)</span><span> </span><span class="symbol" id="span_12_122">-&gt;</span><span> </span><span id="span_12_124">Float</span><span class="symbol" id="span_12_125">,</span><span> </span><span id="span_12_126">key</span><span class="symbol" id="span_12_127">:</span><span id="span_12_129">Key</span><span class="symbol" id="span_12_130">)</span><span> </span><span class="symbol" id="span_12_131">-&gt;</span><span> </span><span class="symbol" id="span_12_133">(</span><span id="span_12_134">Float</span><span class="symbol" id="span_12_135">,</span><span> </span><span id="span_12_136">Float</span><span class="symbol" id="span_12_137">)</span><span> </span><span class="symbol" id="span_12_138">=</span><span class="comment">
+  </span><span id="span_12_141">samps</span><span> </span><span class="symbol" id="span_12_142">=</span><span> </span><span class="keyword" id="span_12_144">for</span><span> </span><span id="span_12_145">i</span><span class="symbol" id="span_12_146">:</span><span class="symbol" id="span_12_149">(</span><span id="span_12_150">Fin</span><span> </span><span id="span_12_152">n</span><span class="symbol" id="span_12_153">)</span><span class="symbol" id="span_12_154">.</span><span> </span><span id="span_12_155">many</span><span> </span><span id="span_12_157">f</span><span> </span><span id="span_12_159">key</span><span> </span><span id="span_12_161">i</span><span class="comment">
+  </span><span class="symbol" id="span_12_164">(</span><span id="span_12_165">mean</span><span> </span><span id="span_12_167">samps</span><span class="symbol" id="span_12_168">,</span><span> </span><span id="span_12_169">std</span><span> </span><span id="span_12_171">samps</span><span class="symbol" id="span_12_172">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_14_174">numSamps</span><span> </span><span class="symbol" id="span_14_175">=</span><span> </span><span class="literal" id="span_14_176">1000000</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">:</span><span id="span_16_177">p</span><span> </span><span id="span_16_178">meanAndStdDev</span><span> </span><span id="span_16_180">numSamps</span><span> </span><span id="span_16_182">estimatePiArea</span><span> </span><span class="symbol" id="span_16_185">(</span><span id="span_16_186">new_key</span><span> </span><span class="literal" id="span_16_188">0</span><span class="symbol" id="span_16_189">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">:</span><span id="span_18_190">p</span><span> </span><span id="span_18_191">meanAndStdDev</span><span> </span><span id="span_18_193">numSamps</span><span> </span><span id="span_18_195">estimatePiAvgVal</span><span> </span><span class="symbol" id="span_18_198">(</span><span id="span_18_199">new_key</span><span> </span><span class="literal" id="span_18_201">0</span><span class="symbol" id="span_18_202">)</span><span class="comment">
+</span></div>
+</body></html>
