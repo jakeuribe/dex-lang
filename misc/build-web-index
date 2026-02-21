@@ -7,10 +7,11 @@
 # The rendered HTML of the index is meant to be placed at the root of the Dex
 # page tree, so that relative links work.
 
-# The script accepts three arguments:
+# The script accepts four arguments:
 # - One argument containing a space-separated list of documentation files
 # - One argument containing a space-separated list of example files
 # - One argument containing a space-separated list of library files
+# - One argument containing a space-separated list of showcase files
 
 # TODO: Right now, the indexing script requires every file to have a single
 # title, identified by having a "'# <title>" line in the Dex source.  We should
@@ -20,22 +21,31 @@
 import re
 import sys
 
+def link_name_for(fname):
+  """Map a source .dx path to its web page link (relative to site root)."""
+  if fname.startswith("doc/"):
+    return fname[len("doc/"):-len(".dx")]
+  elif fname.startswith("showcase/"):
+    # showcase/<dir>/<name>.dx -> showcase/<name>
+    import os
+    base = os.path.splitext(os.path.basename(fname))[0]
+    return f"showcase/{base}"
+  else:
+    return fname[:-len(".dx")]
+
 def file_block(files):
   for fname in files:
-    if fname.startswith("doc/"):
-      link_name = fname[len("doc/"):-len(".dx")]
-    else:
-      link_name = fname[:-len(".dx")]
+    link = link_name_for(fname)
     with open(fname, 'r') as f:
       line = f.readline()
       title = re.match(r"' *# ?(.*)", line)
       if title:
-        print(f"- [{fname}]({link_name}.html) {title.group(1)}")
+        print(f"- [{fname}]({link}.html) {title.group(1)}")
       else:
         raise ValueError(f"First line of file {fname} was not a title (top-level Markdown heading)")
 
 def main():
-  docs, examples, libraries = sys.argv[1:4]
+  docs, examples, libraries, showcase = sys.argv[1:5]
 
   print("# InDex"); print("")
 
@@ -46,6 +56,10 @@ def main():
   print(""); print("## Examples"); print("")
 
   file_block(examples.split())
+
+  print(""); print("## Showcase"); print("")
+
+  file_block(sorted(showcase.split()))
 
   print(""); print("## Libraries"); print("")
 
