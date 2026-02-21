@@ -50,6 +50,7 @@ def power_of_2_fft(
     ForwardFT -> -pi
     InverseFT -> pi
 
+  nix = (Fin log2_n)=>(Fin 2)
   (n, ans) = yield_state (1, x) \combRef.
     for i:(Fin log2_n).
       ipow2Ref = fst_ref combRef
@@ -60,7 +61,7 @@ def power_of_2_fft(
       xRef := yield_accum (AddMonoid Complex) \bufRef.
         for j:((Fin log2_half_n)=>(Fin 2)).  # Executes in parallel.
           (left_read_ix, right_read_ix,
-           left_write_ix, right_write_ix) = butterfly_ixs j ipow2
+           left_write_ix, right_write_ix) : (nix, nix, nix, nix) = butterfly_ixs j ipow2
 
           # Read one element from the last buffer, scaled.
           angle = dir_const * (n_to_f $ mod (ordinal j) ipow2) / n_to_f ipow2
