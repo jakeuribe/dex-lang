@@ -3,11 +3,15 @@ packages:        dex.cabal
 source-repository-package
     type:       git
     location:   https://github.com/llvm-hs/llvm-hs
-    tag:        llvm-9
+    tag:        5bca2c1a2a3aa98ecfb19181e7a5ebbf3e212b76
     subdir:     llvm-hs
 
 source-repository-package
     type:       git
     location:   https://github.com/llvm-hs/llvm-hs
-    tag:        llvm-9
+    tag:        5bca2c1a2a3aa98ecfb19181e7a5ebbf3e212b76
     subdir:     llvm-hs-pure
+
+package llvm-hs
+  extra-lib-dirs: /usr/lib/llvm-15/lib
+  extra-include-dirs: /usr/lib/llvm-15/include

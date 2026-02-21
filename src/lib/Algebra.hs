@@ -147,7 +147,7 @@ atomAsPoly = \case
   _ -> empty
 
 impNameAsPoly :: ImpName i -> BlockTraverserM i o (Polynomial o)
-impNameAsPoly v = getSubst <&> (!v) >>= \case
+impNameAsPoly v = getSubst <&> (! v) >>= \case
   PolyRename v' -> return $ poly [(1, mono [(RightE v', 1)])]
 
 atomVarAsPoly :: AtomVar SimpIR i -> BlockTraverserM i o (Polynomial o)
