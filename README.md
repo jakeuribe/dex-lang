@@ -24,9 +24,24 @@ or these example programs:
   * [Dynamic programming (Levenshtein distance)](https://google-research.github.io/dex-lang/examples/levenshtein-distance.html)
   * [Molecular dynamics simulation](https://google-research.github.io/dex-lang/examples/md.html)
 
+### Showcase
+
+Interactive, rendered versions of the showcase examples (hosted on GitHub Pages):
+
+  * [Mandelbrot Set](https://jakeuribe.github.io/dex-lang/showcase/mandelbrot.html)
+  * [Multi-step Ray Tracer](https://jakeuribe.github.io/dex-lang/showcase/raytrace.html)
+  * [Monte Carlo Estimates of Pi](https://jakeuribe.github.io/dex-lang/showcase/pi.html)
+  * [Markov Chain Monte Carlo](https://jakeuribe.github.io/dex-lang/showcase/mcmc.html)
+  * [ODE Integrator](https://jakeuribe.github.io/dex-lang/showcase/ode-integrator.html)
+  * [Sierpinski Triangle](https://jakeuribe.github.io/dex-lang/showcase/sierpinski.html)
+  * [Basis Function Regression](https://jakeuribe.github.io/dex-lang/showcase/regression.html)
+  * [Brownian Motion](https://jakeuribe.github.io/dex-lang/showcase/brownian_motion.html)
+  * [Levenshtein Distance](https://jakeuribe.github.io/dex-lang/showcase/levenshtein-distance.html)
+  * [Molecular Dynamics](https://jakeuribe.github.io/dex-lang/showcase/md.html)
+
 Or for a more comprehensive look, there's
 
-  * [The InDex](https://google-research.github.io/dex-lang/index.html) of all documents, libraries, and examples included in this repository.
+  * [The InDex](https://jakeuribe.github.io/dex-lang/index.html) of all documents, libraries, examples, and showcase programs included in this repository.
 
 🚨 **Dex is an experimental research project at an early stage of
 development. Expect monstrous bugs and razor-sharp edges!**
