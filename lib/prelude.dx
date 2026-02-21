@@ -467,7 +467,7 @@ instance VSpace(Float)
   def (.*)(x, y) = x * y
 
 instance VSpace(Float64)
-  def (.*)(x, y) = x * y
+  def (.*)(x, y) = (f_to_f64 x) * y
 
 instance VSpace(n=>a) given (a|VSpace, n|Ix)
   def (.*)(s, xs) = for i. s .* xs[i]
