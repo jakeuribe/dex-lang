@@ -911,7 +911,11 @@ dexAlignment :: L.Type -> Word32
 dexAlignment = \case
   L.IntegerType bits | bits `mod` 8 == 0 -> bits `div` 8
   L.IntegerType _ -> 1
+#if MIN_VERSION_llvm_hs(15,0,0)
+  L.PointerType _ -> 4
+#else
   L.PointerType _ _ -> 4
+#endif
   L.FloatingPointType L.FloatFP -> 4
   L.FloatingPointType L.DoubleFP -> 8
   L.VectorType _ eltTy -> dexAlignment eltTy
