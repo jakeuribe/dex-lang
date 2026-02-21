@@ -1,0 +1,96 @@
+'# Basis Function Regression
+
+import plot
+
+
+struct SolverState(n|Ix) =
+  x : n=>Float
+  r : n=>Float
+  p : n=>Float
+
+# Conjugate gradients solver
+def solve(mat:m=>m=>Float, b:m=>Float) -> m=>Float given (m|Ix) =
+  x0 = zero :: m=>Float
+  r0 = b - (mat **. x0)
+  n_iter = size m
+  result = apply_n(n_iter, SolverState(x0, r0, r0)) \s.
+    r = s.r
+    p = s.p
+    ap = mat **. p
+    alpha = vdot r r / vdot p ap
+    x' = s.x + alpha .* p
+    r' = r - alpha .* ap
+    beta = vdot r' r' / (vdot r r + 0.000001)
+    p' = r' + beta .* p
+    SolverState(x', r', p')
+  result.x
+
+'Make some synthetic data
+
+Nx = Fin 100
+noise = 0.1
+[k1, k2] = split_key (new_key 0)
+> Type error: couldn't infer implicit argument `n` of split_key
+
+def trueFun(x:Float) -> Float =
+  x + sin (5.0 * x)
+
+xs : Nx=>Float = for i. rand (ixkey k1 i)
+> Name error: error in (earlier) definition of variable: k1
+ys : Nx=>Float = for i. trueFun xs[i] + noise * randn (ixkey k2 i)
+> Name error: error in (earlier) definition of variable: xs
+
+:html show_plot $ xy_plot xs ys
+> Name error: error in (earlier) definition of variable: xs
+
+'Implement basis function regression
+
+def regress(featurize: (Float) -> d=>Float, xRaw:n=>Float, y:n=>Float) -> d=>Float given (d|Ix, n|Ix) =
+  x = map featurize xRaw
+  xT = transpose x
+  solve (xT ** x) (xT **. y)
+> Name error: variable not in scope: map
+
+'Fit a third-order polynomial
+
+def poly(x:Float) -> d=>Float given (d|Ix) =
+  for i. pow x (n_to_f (ordinal i))
+
+params : (Fin 4)=>Float = regress poly xs ys
+> Name error: error in (earlier) definition of variable: regress
+
+def predict(x:Float) -> Float =
+  vdot params (poly x)
+> Name error: error in (earlier) definition of variable: params
+
+
+xsTest = linspace (Fin 200) 0.0 1.0
+
+:html show_plot $ xy_plot xsTest (map predict xsTest)
+> Name error: variable not in scope: map
+
+'RMS error
+
+def rmsErr(truth:n=>Float, pred:n=>Float) -> Float given (n|Ix) =
+  sqrt $ mean for i. sq (pred[i] - truth[i])
+> Type error: type annotation or constraint required
+
+:p rmsErr ys (map predict xs)
+> Name error: error in (earlier) definition of variable: rmsErr
+
+def tabCat(xs:n=>a, ys:m=>a) -> (Either n m)=>a given (n|Ix, m|Ix, a) =
+  for i. case i of
+    Left  i' -> xs[i']
+    Right i' -> ys[i']
+> Type error: type annotation or constraint required
+
+xsPlot = tabCat xs xsTest
+> Name error: error in (earlier) definition of variable: tabCat
+ysPlot = tabCat ys $ map predict xsTest
+> Name error: error in (earlier) definition of variable: tabCat
+
+:html show_plot $ xyc_plot xsPlot ysPlot $
+        for i. case i of
+                 Left  _ -> 0.0
+                 Right _ -> 1.0
+> Name error: error in (earlier) definition of variable: xsPlot

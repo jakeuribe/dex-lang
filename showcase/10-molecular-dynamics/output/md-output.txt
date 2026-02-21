@@ -1,0 +1,69 @@
+'# Molecular Dynamics in Dex
+
+import plot
+
+'This is more-or-less a port of Jax MD into Dex to see how molecular dynamics looks in
+Dex. For now, the structure of the two implementations is pretty close. However, details
+look different.
+
+'## Math
+
+def truncate(x: Float) -> Float =
+  case x < 0.0 of
+    True -> -floor(-x)
+    False -> floor x
+
+# A mod that matches np.mod and python mod.
+def pmod(x: Float, y: Float) -> Float =
+  x - floor(x / y) * y
+
+# A mod that matches np.fmod and c fmod.
+def fmod(x: Float, y: Float) -> Float =
+  x - truncate (x / y) * y
+
+def Vec(dim|Ix) -> Type = dim=>Float
+
+def sq_norm(r: Vec dim) -> Float given (dim|Ix) =
+  sum $ for i. r[i] * r[i]
+> Type error: type annotation or constraint required
+
+def norm(r: Vec dim) -> Float given (dim|Ix) =
+  sqrt $ sq_norm r
+> Name error: error in (earlier) definition of variable: sq_norm
+
+'## Useful Quantities
+
+'This computes a size for a box of the given number of dimensions,
+such that the given number of particles will fill it with the given
+density.
+
+def box_size_at_number_density(particle_count: Int, density: Float, dim: Int) -> Float =
+  pow ((i_to_f particle_count) / density) (1.0 / (i_to_f dim))
+
+'## Spaces
+
+def Displacement(dim|Ix) -> Type = (Vec dim, Vec dim) -> Vec dim
+def Shift(dim|Ix) -> Type = (Vec dim, Vec dim) -> Vec dim
+
+def free_displacement() ->> Displacement dim given (dim|Ix) =
+  \r_1 r_2. r_1 - r_2
+
+def free_shift() ->> Shift dim given (dim|Ix) =
+  \r dr. r + dr
+
+def periodic_wrap(box: Float, dr: dim=>Float) -> (dim=>Float) given (dim|Ix) =
+  for i. (pmod (dr[i] + box / 2.0) box) - box / 2.0
+
+def periodic_displacement(box:Float) -> Displacement dim given (dim|Ix) =
+  \r_1 r_2. periodic_wrap box (r_1 - r_2)
+
+def periodic_shift(box:Float) -> Shift dim given (dim|Ix) =
+  \r dr. for i. pmod (r[i] + dr[i]) box
+
+'## Energy Functions
+
+def Energy(n|Ix, dim|Ix) -> Type = (n=>Vec dim) -> Float
+
+'The "soft-sphere" energy, as a function of the displacement `r`.
+
+def soft_sphere(dex: <stdout>: commitBuffer: invalid argument (cannot encode character '\949')

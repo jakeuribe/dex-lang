@@ -1,0 +1,156 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+body{font-family:"SF Mono","Fira Code",monospace;max-width:960px;margin:0 auto;padding:20px;background:#0d1117;color:#c9d1d9}
+.code-block{background:#161b22;padding:12px;margin:6px 0;border-radius:6px;overflow-x:auto;font-size:14px}
+.prose-block{padding:8px 0} .prose-block h1{color:#58a6ff;border-bottom:1px solid #30363d;padding-bottom:8px}
+.prose-block h2{color:#58a6ff}
+.result{background:#1c2128;padding:10px;margin:2px 0;border-left:3px solid #3fb950;border-radius:0 4px 4px 0;font-size:13px}
+.error{background:#1c0000;padding:10px;margin:2px 0;border-left:3px solid #f85149;border-radius:0 4px 4px 0}
+img.plot-img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:4px;border:1px solid #30363d}
+svg{max-width:100%;height:auto;display:block;margin:12px auto}
+pre{margin:0;white-space:pre-wrap}
+span{white-space:pre-wrap}
+</style></head><body>
+<h1 style="color:#58a6ff;text-align:center">09-levenshtein</h1><hr style="border-color:#30363d">
+<div class="code-block"><span class="comment"></span></div>
+<div class="prose-block"><h1>Levenshtein Distance</h1>
+</div>
+<div class="prose-block"><p>May 13, 2022</p>
+</div>
+<div class="prose-block"><p>The Levenshtein distance is the minimum edit distance between two
+sequences, counting insertions, deletions, and substitutions each as 1.</p>
+</div>
+<div class="prose-block"><p>Let's see how well Dex handles the conventional dynamic program for
+this: For each pair of prefixes of the input strings, the Levenshtein
+distance between those prefixes is the minimum obtainable from the
+prefixes one shorter by inserting, deleting, or substituting an
+element.</p>
+</div>
+<div class="prose-block"><p>Here is the helper that builds the dynamic program table.  Dex's
+flexible index sets let us encode the fact that the table is 1 larger
+in each dimension than the inputs.  By capturing the relationship
+statically we avoid both programmer off-by-one errors and runtime array
+bounds checks.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_6_2">def</span><span> </span><span id="span_6_3">levenshtein_table</span><span class="symbol" id="span_6_5">(</span><span id="span_6_6">xs</span><span class="symbol" id="span_6_7">:</span><span> </span><span id="span_6_9">n</span><span class="symbol" id="span_6_10">=&gt;</span><span id="span_6_12">a</span><span class="symbol" id="span_6_13">,</span><span> </span><span id="span_6_14">ys</span><span class="symbol" id="span_6_15">:</span><span> </span><span id="span_6_17">m</span><span class="symbol" id="span_6_18">=&gt;</span><span id="span_6_20">a</span><span class="symbol" id="span_6_21">)</span><span class="comment">
+    </span><span class="symbol" id="span_6_22">-&gt;</span><span> </span><span class="symbol" id="span_6_24">(</span><span id="span_6_25">Post</span><span> </span><span id="span_6_27">n</span><span> </span><span class="symbol" id="span_6_28">=&gt;</span><span> </span><span id="span_6_30">Post</span><span> </span><span id="span_6_32">m</span><span> </span><span class="symbol" id="span_6_33">=&gt;</span><span> </span><span id="span_6_35">Nat</span><span class="symbol" id="span_6_36">)</span><span> </span><span class="keyword" id="span_6_37">given</span><span> </span><span class="symbol" id="span_6_39">(</span><span id="span_6_40">n</span><span class="symbol" id="span_6_41">|</span><span id="span_6_43">Ix</span><span class="symbol" id="span_6_44">,</span><span> </span><span id="span_6_45">m</span><span class="symbol" id="span_6_46">|</span><span id="span_6_48">Ix</span><span class="symbol" id="span_6_49">,</span><span> </span><span id="span_6_50">a</span><span class="symbol" id="span_6_51">|</span><span id="span_6_53">Eq</span><span class="symbol" id="span_6_54">)</span><span> </span><span class="symbol" id="span_6_55">=</span><span class="comment">
+  </span><span id="span_6_58">yield_state</span><span> </span><span class="symbol" id="span_6_61">(</span><span class="keyword" id="span_6_63">for</span><span> </span><span class="symbol" id="span_6_65">_</span><span> </span><span class="symbol" id="span_6_67">_</span><span class="symbol" id="span_6_68">.</span><span> </span><span class="literal" id="span_6_69">0</span><span class="symbol" id="span_6_70">)</span><span> </span><span class="symbol" id="span_6_73">\</span><span id="span_6_74">tab</span><span class="symbol" id="span_6_75">.</span><span class="comment">
+    </span><span class="keyword" id="span_6_79">for</span><span> </span><span id="span_6_80">i</span><span class="symbol" id="span_6_81">:</span><span class="symbol" id="span_6_84">(</span><span id="span_6_85">Post</span><span> </span><span id="span_6_87">n</span><span class="symbol" id="span_6_88">)</span><span class="symbol" id="span_6_89">.</span><span> </span><span id="span_6_90">tab</span><span class="symbol" id="span_6_91">!</span><span id="span_6_93">i</span><span class="symbol" id="span_6_94">!</span><span id="span_6_96">first_ix</span><span> </span><span class="symbol" id="span_6_97">:=</span><span> </span><span id="span_6_99">ordinal</span><span> </span><span id="span_6_101">i</span><span class="comment">
+    </span><span class="keyword" id="span_6_104">for</span><span> </span><span id="span_6_105">j</span><span class="symbol" id="span_6_106">:</span><span class="symbol" id="span_6_109">(</span><span id="span_6_110">Post</span><span> </span><span id="span_6_112">m</span><span class="symbol" id="span_6_113">)</span><span class="symbol" id="span_6_114">.</span><span> </span><span id="span_6_115">tab</span><span class="symbol" id="span_6_116">!</span><span id="span_6_118">first_ix</span><span class="symbol" id="span_6_119">!</span><span id="span_6_121">j</span><span> </span><span class="symbol" id="span_6_122">:=</span><span> </span><span id="span_6_124">ordinal</span><span> </span><span id="span_6_126">j</span><span class="comment">
+    </span><span class="keyword" id="span_6_129">for</span><span> </span><span id="span_6_130">i</span><span class="symbol" id="span_6_131">:</span><span id="span_6_133">n</span><span> </span><span id="span_6_134">j</span><span class="symbol" id="span_6_135">:</span><span id="span_6_137">m</span><span class="symbol" id="span_6_138">.</span><span class="comment">
+      </span><span id="span_6_141">subst_cost</span><span> </span><span class="symbol" id="span_6_142">=</span><span> </span><span class="keyword" id="span_6_144">if</span><span> </span><span id="span_6_145">xs</span><span class="symbol" id="span_6_148">[</span><span id="span_6_149">i</span><span class="symbol" id="span_6_150">]</span><span> </span><span class="symbol" id="span_6_151">==</span><span> </span><span id="span_6_153">ys</span><span class="symbol" id="span_6_156">[</span><span id="span_6_157">j</span><span class="symbol" id="span_6_158">]</span><span> </span><span class="keyword" id="span_6_159">then</span><span> </span><span class="literal" id="span_6_160">0</span><span> </span><span class="keyword" id="span_6_161">else</span><span> </span><span class="literal" id="span_6_162">1</span><span class="comment">
+      </span><span id="span_6_164">d_subst</span><span>  </span><span class="symbol" id="span_6_165">=</span><span> </span><span id="span_6_166">get</span><span> </span><span id="span_6_168">tab</span><span class="symbol" id="span_6_169">!</span><span class="symbol" id="span_6_172">(</span><span id="span_6_173">left_post</span><span>  </span><span id="span_6_175">i</span><span class="symbol" id="span_6_176">)</span><span class="symbol" id="span_6_177">!</span><span class="symbol" id="span_6_180">(</span><span id="span_6_181">left_post</span><span>  </span><span id="span_6_183">j</span><span class="symbol" id="span_6_184">)</span><span> </span><span class="symbol" id="span_6_185">+</span><span> </span><span id="span_6_187">subst_cost</span><span class="comment">
+      </span><span id="span_6_189">d_delete</span><span> </span><span class="symbol" id="span_6_190">=</span><span> </span><span id="span_6_191">get</span><span> </span><span id="span_6_193">tab</span><span class="symbol" id="span_6_194">!</span><span class="symbol" id="span_6_197">(</span><span id="span_6_198">left_post</span><span>  </span><span id="span_6_200">i</span><span class="symbol" id="span_6_201">)</span><span class="symbol" id="span_6_202">!</span><span class="symbol" id="span_6_205">(</span><span id="span_6_206">right_post</span><span> </span><span id="span_6_208">j</span><span class="symbol" id="span_6_209">)</span><span> </span><span class="symbol" id="span_6_210">+</span><span> </span><span class="literal" id="span_6_212">1</span><span class="comment">
+      </span><span id="span_6_214">d_insert</span><span> </span><span class="symbol" id="span_6_215">=</span><span> </span><span id="span_6_216">get</span><span> </span><span id="span_6_218">tab</span><span class="symbol" id="span_6_219">!</span><span class="symbol" id="span_6_222">(</span><span id="span_6_223">right_post</span><span> </span><span id="span_6_225">i</span><span class="symbol" id="span_6_226">)</span><span class="symbol" id="span_6_227">!</span><span class="symbol" id="span_6_230">(</span><span id="span_6_231">left_post</span><span>  </span><span id="span_6_233">j</span><span class="symbol" id="span_6_234">)</span><span> </span><span class="symbol" id="span_6_235">+</span><span> </span><span class="literal" id="span_6_237">1</span><span class="comment">
+      </span><span id="span_6_239">tab</span><span class="symbol" id="span_6_240">!</span><span class="symbol" id="span_6_243">(</span><span id="span_6_244">right_post</span><span> </span><span id="span_6_246">i</span><span class="symbol" id="span_6_247">)</span><span class="symbol" id="span_6_248">!</span><span class="symbol" id="span_6_251">(</span><span id="span_6_252">right_post</span><span> </span><span id="span_6_254">j</span><span class="symbol" id="span_6_255">)</span><span> </span><span class="symbol" id="span_6_256">:=</span><span class="comment">
+        </span><span id="span_6_258">minimum</span><span> </span><span class="symbol" id="span_6_261">[</span><span id="span_6_262">d_subst</span><span class="symbol" id="span_6_263">,</span><span> </span><span id="span_6_264">d_delete</span><span class="symbol" id="span_6_265">,</span><span> </span><span id="span_6_266">d_insert</span><span class="symbol" id="span_6_267">]</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block">%time
+levenshtein_table [&#39;k&#39;, &#39;i&#39;, &#39;t&#39;, &#39;t&#39;, &#39;e&#39;, &#39;n&#39;] [&#39;s&#39;, &#39;i&#39;, &#39;t&#39;, &#39;t&#39;, &#39;i&#39;, &#39;n&#39;, &#39;g&#39;]
+&gt; [[0, 1, 2, 3, 4, 5, 6, 7], [1, 1, 2, 3, 4, 5, 6, 7], [2, 2, 1, 2, 3, 4, 5, 6], [3, 3, 2, 1, 2, 3, 4, 5], [4, 4, 3, 2, 1, 2, 3, 4], [5, 5, 4, 3, 2, 2, 3, 4], [6, 6, 5, 4, 3, 3, 2, 3]]
+&gt;
+&gt; Compile time: 77.001 ms
+&gt; Run time:     6.386 us 
+
+</div><div class="err-result">33:6:
+   |
+33 | %time
+   |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>The actual distance is of course just the last element of the table.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_10_269">def</span><span> </span><span id="span_10_270">levenshtein</span><span class="symbol" id="span_10_272">(</span><span id="span_10_273">xs</span><span class="symbol" id="span_10_274">:</span><span> </span><span id="span_10_276">n</span><span class="symbol" id="span_10_277">=&gt;</span><span id="span_10_279">a</span><span class="symbol" id="span_10_280">,</span><span> </span><span id="span_10_281">ys</span><span class="symbol" id="span_10_282">:</span><span> </span><span id="span_10_284">m</span><span class="symbol" id="span_10_285">=&gt;</span><span id="span_10_287">a</span><span class="symbol" id="span_10_288">)</span><span> </span><span class="symbol" id="span_10_289">-&gt;</span><span> </span><span id="span_10_290">Nat</span><span> </span><span class="keyword" id="span_10_291">given</span><span> </span><span class="symbol" id="span_10_293">(</span><span id="span_10_294">n</span><span class="symbol" id="span_10_295">|</span><span id="span_10_297">Ix</span><span class="symbol" id="span_10_298">,</span><span> </span><span id="span_10_299">m</span><span class="symbol" id="span_10_300">|</span><span id="span_10_302">Ix</span><span class="symbol" id="span_10_303">,</span><span> </span><span id="span_10_304">a</span><span class="symbol" id="span_10_305">|</span><span id="span_10_307">Eq</span><span class="symbol" id="span_10_308">)</span><span> </span><span class="symbol" id="span_10_309">=</span><span class="comment">
+  </span><span id="span_10_312">levenshtein_table</span><span class="symbol" id="span_10_315">(</span><span id="span_10_316">xs</span><span class="symbol" id="span_10_317">,</span><span> </span><span id="span_10_318">ys</span><span class="symbol" id="span_10_319">)</span><span class="symbol" id="span_10_322">[</span><span id="span_10_323">last_ix</span><span class="symbol" id="span_10_324">,</span><span> </span><span id="span_10_325">last_ix</span><span class="symbol" id="span_10_326">]</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block">%time
+levenshtein (iota $ Fin 100) (iota $ Fin 100)
+&gt; 0
+&gt;
+&gt; Compile time: 55.368 ms
+&gt; Run time:     19.665 us 
+
+</div><div class="err-result">45:6:
+   |
+45 | %time
+   |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><h2>Speed</h2>
+</div>
+<div class="prose-block"><p>To check that we don't embarrass ourselves on performance, let's run
+the Sountsov benchmark: Compute Levenshtein distances for all pairs of
+<code>arange</code> arrays of size up to 100.</p>
+</div>
+<div class="code-block">%bench &quot;Sountsov Benchmark&quot;
+answer = for i:(Fin 100).
+  for j:(Fin 100).
+    iint = ordinal i
+    jint = ordinal j
+    levenshtein (iota $ Fin iint) (iota $ Fin jint)
+&gt;
+&gt; Sountsov Benchmark
+&gt; Compile time: 81.135 ms
+&gt; Run time:     79.545 ms 	(based on 26 runs)
+sum(sum(answer))
+&gt; 333300
+
+</div><div class="err-result">58:8:
+   |
+58 | %bench &quot;Sountsov Benchmark&quot;
+   |        ^
+Unrecognized primitive: bench
+</div>
+<div class="prose-block"><p>The straightforward C++ program for this takes about 35ms on my
+workstation, so Dex performance is in the right ballpark.  (And we
+know several optimizations that should let us close the gap.)  As of
+this writing, native JAX takes 15 minutes, due to tracing and
+compiling the body 10,000 times (once for each pair of input sizes).</p>
+</div>
+<div class="prose-block"><h2>Real Data</h2>
+</div>
+<div class="prose-block"><p>Just for fun, we can make a crude spelling correcter out of this
+distance function on words:</p>
+</div>
+<div class="code-block"><span id="span_19_328">AsList</span><span class="symbol" id="span_19_331">(</span><span id="span_19_332">ct</span><span class="symbol" id="span_19_333">,</span><span> </span><span id="span_19_334">words</span><span class="symbol" id="span_19_335">)</span><span> </span><span class="symbol" id="span_19_336">=</span><span> </span><span id="span_19_337">lines</span><span> </span><span class="symbol" id="span_19_338">$</span><span> </span><span id="span_19_340">unsafe_io</span><span> </span><span class="symbol" id="span_19_343">\.</span><span> </span><span id="span_19_344">read_file</span><span> </span><span id="span_19_346">&quot;/usr/share/dict/words&quot;</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_21_348">def</span><span> </span><span id="span_21_349">closest_word</span><span class="symbol" id="span_21_351">(</span><span id="span_21_352">s</span><span class="symbol" id="span_21_353">:</span><span id="span_21_355">String</span><span class="symbol" id="span_21_356">)</span><span> </span><span class="symbol" id="span_21_357">-&gt;</span><span> </span><span id="span_21_358">String</span><span> </span><span class="symbol" id="span_21_359">=</span><span class="comment">
+  </span><span id="span_21_362">AsList</span><span class="symbol" id="span_21_365">(</span><span class="symbol" id="span_21_367">_</span><span class="symbol" id="span_21_368">,</span><span> </span><span id="span_21_369">s&#39;</span><span class="symbol" id="span_21_370">)</span><span> </span><span class="symbol" id="span_21_371">=</span><span> </span><span id="span_21_372">s</span><span class="comment">
+  </span><span id="span_21_374">fst</span><span> </span><span class="symbol" id="span_21_375">$</span><span> </span><span id="span_21_377">minimum_by</span><span> </span><span id="span_21_379">snd</span><span> </span><span class="keyword" id="span_21_382">for</span><span> </span><span id="span_21_383">i</span><span class="symbol" id="span_21_384">.</span><span class="comment">
+    </span><span id="span_21_387">AsList</span><span class="symbol" id="span_21_390">(</span><span class="symbol" id="span_21_392">_</span><span class="symbol" id="span_21_393">,</span><span> </span><span id="span_21_394">word</span><span class="symbol" id="span_21_395">)</span><span> </span><span class="symbol" id="span_21_396">=</span><span> </span><span id="span_21_397">words</span><span class="symbol" id="span_21_400">[</span><span id="span_21_401">i</span><span class="symbol" id="span_21_402">]</span><span class="comment">
+    </span><span class="symbol" id="span_21_405">(</span><span id="span_21_406">words</span><span class="symbol" id="span_21_409">[</span><span id="span_21_410">i</span><span class="symbol" id="span_21_411">]</span><span class="symbol" id="span_21_412">,</span><span> </span><span id="span_21_413">levenshtein</span><span> </span><span id="span_21_415">word</span><span> </span><span id="span_21_417">s&#39;</span><span class="symbol" id="span_21_418">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block">%time
+closest_word &quot;hello&quot;
+&gt; &quot;hello&quot;
+&gt;
+&gt; Compile time: 126.402 ms
+&gt; Run time:     73.713 ms 
+
+</div><div class="err-result">90:6:
+   |
+90 | %time
+   |      ^
+Unrecognized primitive: time
+</div>
+<div class="code-block"><span id="span_24_420">closest_word</span><span> </span><span id="span_24_422">&quot;kitttens&quot;</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_25_424">closest_word</span><span> </span><span id="span_25_426">&quot;functor&quot;</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_26_428">closest_word</span><span> </span><span id="span_26_430">&quot;applicative&quot;</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_27_432">closest_word</span><span> </span><span id="span_27_434">&quot;monoids&quot;</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_28_436">closest_word</span><span> </span><span id="span_28_438">&quot;semigroup&quot;</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_29_440">closest_word</span><span> </span><span id="span_29_442">&quot;paralllel&quot;</span><span class="comment">
+</span></div>
+</body></html>

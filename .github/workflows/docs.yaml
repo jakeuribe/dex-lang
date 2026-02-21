@@ -4,9 +4,23 @@ on:
   push:
     branches:
       - main
+      - 'claude/**'
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  build:
+  # Full build from source (main branch only, needs LLVM + Stack)
+  build-from-source:
+    if: github.ref == 'refs/heads/main'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -40,11 +54,34 @@ jobs:
     - name: Generate docs
       run: make docs
 
-    - name: Deploy to GitHub Pages
-      uses: "JamesIves/github-pages-deploy-action@3dbacc7e69578703f91f077118b3475862cb09b8" # 4.1.0
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
       with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: gh-pages # The branch the action should deploy to.
-          folder: pages/dex-lang # The folder the action should deploy.
-          clean: false     # If true, automatically remove deleted files from the deploy branch.
-          commit-message: Updating gh-pages from ${{ github.sha }}
+        path: pages/dex-lang
+
+  # Deploy pre-built pages from docs/ (feature branches)
+  build-prebuilt:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v4
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/dex-lang
+
+  # Deploy to GitHub Pages
+  deploy:
+    needs: [build-from-source, build-prebuilt]
+    # Run if either build job succeeded (the other will be skipped)
+    if: always() && (needs.build-from-source.result == 'success' || needs.build-prebuilt.result == 'success')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

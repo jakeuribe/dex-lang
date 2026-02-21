@@ -309,8 +309,8 @@ opt-tests: just-build
 	misc/file-check tests/opt-tests.dx $(dex) -O script
 	misc/file-check tests/inline-tests.dx $(dex) -O script
 
-doc-format-test: $(doc-files) $(example-files) $(lib-files)
-	python3 misc/build-web-index "$(doc-files)" "$(example-files)" "$(lib-files)" > /dev/null
+doc-format-test: $(doc-files) $(example-files) $(lib-files) $(showcase-files)
+	python3 misc/build-web-index "$(doc-files)" "$(example-files)" "$(lib-files)" "$(showcase-files)" > /dev/null
 
 quine-tests: $(quine-test-targets)
 
@@ -423,6 +423,10 @@ pages-doc-files = $(doc-names:%=pages/dex-lang/%.html)
 example-files = $(example-names:%=examples/%.dx)
 pages-example-files = $(example-names:%=pages/dex-lang/examples/%.html)
 
+showcase-files = $(wildcard showcase/*/*.dx)
+showcase-basenames = $(basename $(notdir $(showcase-files)))
+pages-showcase-files = $(showcase-basenames:%=pages/dex-lang/showcase/%.html)
+
 lib-files = $(filter-out lib/prelude.dx,$(wildcard lib/*.dx))
 pages-lib-files = $(patsubst %.dx,pages/dex-lang/%.html,$(lib-files))
 static-files = $(static-names:%=pages/dex-lang/static/%)
@@ -430,7 +434,7 @@ static-files = $(static-names:%=pages/dex-lang/static/%)
 serve-docs:
 	cd pages && python3 -m http.server
 
-docs: $(static-files) pages-prelude $(pages-doc-files) $(pages-example-files) $(pages-lib-files) $(slow-pages) pages/dex-lang/index.md
+docs: $(static-files) pages-prelude $(pages-doc-files) $(pages-example-files) $(pages-lib-files) $(pages-showcase-files) $(slow-pages) pages/dex-lang/index.md
 
 pages/dex-lang/static/%: static/%
 	mkdir -p pages/dex-lang/static
@@ -451,8 +455,13 @@ pages/dex-lang/lib/%.html: lib/%.dx
 	mkdir -p pages/dex-lang/lib
 	$(dex) generate-html $^ dex-lang/lib/$*
 
-pages/dex-lang/index.md: $(doc-files) $(example-files) $(lib-files)
-	python3 misc/build-web-index "$(doc-files)" "$(example-files)" "$(lib-files)" > $@
+# Showcase files live in showcase/<dir>/<name>.dx; find the source by basename
+pages/dex-lang/showcase/%.html:
+	mkdir -p pages/dex-lang/showcase
+	$(dex) generate-html $$(find showcase -name '$*.dx') dex-lang/showcase/$*
+
+pages/dex-lang/index.md: $(doc-files) $(example-files) $(lib-files) $(showcase-files)
+	python3 misc/build-web-index "$(doc-files)" "$(example-files)" "$(lib-files)" "$(showcase-files)" > $@
 
 ${pages-doc-files}:pages/dex-lang/%.html: doc/%.dx
 	mkdir -p pages/dex-lang

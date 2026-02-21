@@ -1,0 +1,942 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+body{font-family:"SF Mono","Fira Code",monospace;max-width:960px;margin:0 auto;padding:20px;background:#0d1117;color:#c9d1d9}
+.code-block{background:#161b22;padding:12px;margin:6px 0;border-radius:6px;overflow-x:auto;font-size:14px}
+.prose-block{padding:8px 0} .prose-block h1{color:#58a6ff;border-bottom:1px solid #30363d;padding-bottom:8px}
+.prose-block h2{color:#58a6ff}
+.result{background:#1c2128;padding:10px;margin:2px 0;border-left:3px solid #3fb950;border-radius:0 4px 4px 0;font-size:13px}
+.error{background:#1c0000;padding:10px;margin:2px 0;border-left:3px solid #f85149;border-radius:0 4px 4px 0}
+img.plot-img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:4px;border:1px solid #30363d}
+svg{max-width:100%;height:auto;display:block;margin:12px auto}
+pre{margin:0;white-space:pre-wrap}
+span{white-space:pre-wrap}
+</style></head><body>
+<h1 style="color:#58a6ff;text-align:center">10-molecular-dynamics</h1><hr style="border-color:#30363d">
+<div class="code-block"><span class="comment"></span></div>
+<div class="prose-block"><h1>Molecular Dynamics in Dex</h1>
+</div>
+<div class="code-block"><span class="keyword" id="span_2_1">import</span><span> </span><span id="span_2_2">plot</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>This is more-or-less a port of Jax MD into Dex to see how molecular dynamics looks in
+Dex. For now, the structure of the two implementations is pretty close. However, details
+look different.</p>
+</div>
+<div class="prose-block"><h2>Math</h2>
+</div>
+<div class="code-block"><span class="keyword" id="span_6_4">def</span><span> </span><span id="span_6_5">truncate</span><span class="symbol" id="span_6_7">(</span><span id="span_6_8">x</span><span class="symbol" id="span_6_9">:</span><span> </span><span id="span_6_11">Float</span><span class="symbol" id="span_6_12">)</span><span> </span><span class="symbol" id="span_6_13">-&gt;</span><span> </span><span id="span_6_14">Float</span><span> </span><span class="symbol" id="span_6_15">=</span><span class="comment">
+  </span><span class="keyword" id="span_6_19">case</span><span> </span><span id="span_6_20">x</span><span> </span><span class="symbol" id="span_6_21">&lt;</span><span> </span><span class="literal" id="span_6_23">0.0</span><span> </span><span class="keyword" id="span_6_24">of</span><span class="comment">
+    </span><span id="span_6_25">True</span><span> </span><span class="symbol" id="span_6_26">-&gt;</span><span> </span><span class="symbol" id="span_6_27">-</span><span id="span_6_29">floor</span><span class="symbol" id="span_6_32">(</span><span class="symbol" id="span_6_33">-</span><span id="span_6_35">x</span><span class="symbol" id="span_6_36">)</span><span class="comment">
+    </span><span id="span_6_37">False</span><span> </span><span class="symbol" id="span_6_38">-&gt;</span><span> </span><span id="span_6_39">floor</span><span> </span><span id="span_6_41">x</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># A mod that matches np.mod and python mod.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_9_43">def</span><span> </span><span id="span_9_44">pmod</span><span class="symbol" id="span_9_46">(</span><span id="span_9_47">x</span><span class="symbol" id="span_9_48">:</span><span> </span><span id="span_9_50">Float</span><span class="symbol" id="span_9_51">,</span><span> </span><span id="span_9_52">y</span><span class="symbol" id="span_9_53">:</span><span> </span><span id="span_9_55">Float</span><span class="symbol" id="span_9_56">)</span><span> </span><span class="symbol" id="span_9_57">-&gt;</span><span> </span><span id="span_9_58">Float</span><span> </span><span class="symbol" id="span_9_59">=</span><span class="comment">
+  </span><span id="span_9_62">x</span><span> </span><span class="symbol" id="span_9_63">-</span><span> </span><span id="span_9_65">floor</span><span class="symbol" id="span_9_68">(</span><span id="span_9_69">x</span><span> </span><span class="symbol" id="span_9_70">/</span><span> </span><span id="span_9_72">y</span><span class="symbol" id="span_9_73">)</span><span> </span><span class="symbol" id="span_9_74">*</span><span> </span><span id="span_9_76">y</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># A mod that matches np.fmod and c fmod.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_12_78">def</span><span> </span><span id="span_12_79">fmod</span><span class="symbol" id="span_12_81">(</span><span id="span_12_82">x</span><span class="symbol" id="span_12_83">:</span><span> </span><span id="span_12_85">Float</span><span class="symbol" id="span_12_86">,</span><span> </span><span id="span_12_87">y</span><span class="symbol" id="span_12_88">:</span><span> </span><span id="span_12_90">Float</span><span class="symbol" id="span_12_91">)</span><span> </span><span class="symbol" id="span_12_92">-&gt;</span><span> </span><span id="span_12_93">Float</span><span> </span><span class="symbol" id="span_12_94">=</span><span class="comment">
+  </span><span id="span_12_97">x</span><span> </span><span class="symbol" id="span_12_98">-</span><span> </span><span id="span_12_100">truncate</span><span> </span><span class="symbol" id="span_12_103">(</span><span id="span_12_104">x</span><span> </span><span class="symbol" id="span_12_105">/</span><span> </span><span id="span_12_107">y</span><span class="symbol" id="span_12_108">)</span><span> </span><span class="symbol" id="span_12_109">*</span><span> </span><span id="span_12_111">y</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_14_113">def</span><span> </span><span id="span_14_114">Vec</span><span class="symbol" id="span_14_116">(</span><span id="span_14_117">dim</span><span class="symbol" id="span_14_118">|</span><span id="span_14_120">Ix</span><span class="symbol" id="span_14_121">)</span><span> </span><span class="symbol" id="span_14_122">-&gt;</span><span> </span><span id="span_14_123">Type</span><span> </span><span class="symbol" id="span_14_124">=</span><span> </span><span id="span_14_125">dim</span><span class="symbol" id="span_14_126">=&gt;</span><span id="span_14_128">Float</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_16_130">def</span><span> </span><span id="span_16_131">sq_norm</span><span class="symbol" id="span_16_133">(</span><span id="span_16_134">r</span><span class="symbol" id="span_16_135">:</span><span> </span><span id="span_16_137">Vec</span><span> </span><span id="span_16_139">dim</span><span class="symbol" id="span_16_140">)</span><span> </span><span class="symbol" id="span_16_141">-&gt;</span><span> </span><span id="span_16_142">Float</span><span> </span><span class="keyword" id="span_16_143">given</span><span> </span><span class="symbol" id="span_16_145">(</span><span id="span_16_146">dim</span><span class="symbol" id="span_16_147">|</span><span id="span_16_149">Ix</span><span class="symbol" id="span_16_150">)</span><span> </span><span class="symbol" id="span_16_151">=</span><span class="comment">
+  </span><span id="span_16_154">sum</span><span> </span><span class="symbol" id="span_16_155">$</span><span> </span><span class="keyword" id="span_16_158">for</span><span> </span><span id="span_16_159">i</span><span class="symbol" id="span_16_160">.</span><span> </span><span id="span_16_161">r</span><span class="symbol" id="span_16_164">[</span><span id="span_16_165">i</span><span class="symbol" id="span_16_166">]</span><span> </span><span class="symbol" id="span_16_167">*</span><span> </span><span id="span_16_169">r</span><span class="symbol" id="span_16_172">[</span><span id="span_16_173">i</span><span class="symbol" id="span_16_174">]</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_18_176">def</span><span> </span><span id="span_18_177">norm</span><span class="symbol" id="span_18_179">(</span><span id="span_18_180">r</span><span class="symbol" id="span_18_181">:</span><span> </span><span id="span_18_183">Vec</span><span> </span><span id="span_18_185">dim</span><span class="symbol" id="span_18_186">)</span><span> </span><span class="symbol" id="span_18_187">-&gt;</span><span> </span><span id="span_18_188">Float</span><span> </span><span class="keyword" id="span_18_189">given</span><span> </span><span class="symbol" id="span_18_191">(</span><span id="span_18_192">dim</span><span class="symbol" id="span_18_193">|</span><span id="span_18_195">Ix</span><span class="symbol" id="span_18_196">)</span><span> </span><span class="symbol" id="span_18_197">=</span><span class="comment">
+  </span><span id="span_18_200">sqrt</span><span> </span><span class="symbol" id="span_18_201">$</span><span> </span><span id="span_18_203">sq_norm</span><span> </span><span id="span_18_205">r</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><h2>Useful Quantities</h2>
+</div>
+<div class="prose-block"><p>This computes a size for a box of the given number of dimensions,
+such that the given number of particles will fill it with the given
+density.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_22_207">def</span><span> </span><span id="span_22_208">box_size_at_number_density</span><span class="symbol" id="span_22_210">(</span><span id="span_22_211">particle_count</span><span class="symbol" id="span_22_212">:</span><span> </span><span id="span_22_214">Int</span><span class="symbol" id="span_22_215">,</span><span> </span><span id="span_22_216">density</span><span class="symbol" id="span_22_217">:</span><span> </span><span id="span_22_219">Float</span><span class="symbol" id="span_22_220">,</span><span> </span><span id="span_22_221">dim</span><span class="symbol" id="span_22_222">:</span><span> </span><span id="span_22_224">Int</span><span class="symbol" id="span_22_225">)</span><span> </span><span class="symbol" id="span_22_226">-&gt;</span><span> </span><span id="span_22_227">Float</span><span> </span><span class="symbol" id="span_22_228">=</span><span class="comment">
+  </span><span id="span_22_231">pow</span><span> </span><span class="symbol" id="span_22_234">(</span><span class="symbol" id="span_22_236">(</span><span id="span_22_237">i_to_f</span><span> </span><span id="span_22_239">particle_count</span><span class="symbol" id="span_22_240">)</span><span> </span><span class="symbol" id="span_22_241">/</span><span> </span><span id="span_22_243">density</span><span class="symbol" id="span_22_244">)</span><span> </span><span class="symbol" id="span_22_247">(</span><span class="literal" id="span_22_248">1.0</span><span> </span><span class="symbol" id="span_22_249">/</span><span> </span><span class="symbol" id="span_22_252">(</span><span id="span_22_253">i_to_f</span><span> </span><span id="span_22_255">dim</span><span class="symbol" id="span_22_256">)</span><span class="symbol" id="span_22_257">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><h2>Spaces</h2>
+</div>
+<div class="code-block"><span class="keyword" id="span_25_259">def</span><span> </span><span id="span_25_260">Displacement</span><span class="symbol" id="span_25_262">(</span><span id="span_25_263">dim</span><span class="symbol" id="span_25_264">|</span><span id="span_25_266">Ix</span><span class="symbol" id="span_25_267">)</span><span> </span><span class="symbol" id="span_25_268">-&gt;</span><span> </span><span id="span_25_269">Type</span><span> </span><span class="symbol" id="span_25_270">=</span><span> </span><span class="symbol" id="span_25_272">(</span><span id="span_25_273">Vec</span><span> </span><span id="span_25_275">dim</span><span class="symbol" id="span_25_276">,</span><span> </span><span id="span_25_277">Vec</span><span> </span><span id="span_25_279">dim</span><span class="symbol" id="span_25_280">)</span><span> </span><span class="symbol" id="span_25_281">-&gt;</span><span> </span><span id="span_25_283">Vec</span><span> </span><span id="span_25_285">dim</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_26_287">def</span><span> </span><span id="span_26_288">Shift</span><span class="symbol" id="span_26_290">(</span><span id="span_26_291">dim</span><span class="symbol" id="span_26_292">|</span><span id="span_26_294">Ix</span><span class="symbol" id="span_26_295">)</span><span> </span><span class="symbol" id="span_26_296">-&gt;</span><span> </span><span id="span_26_297">Type</span><span> </span><span class="symbol" id="span_26_298">=</span><span> </span><span class="symbol" id="span_26_300">(</span><span id="span_26_301">Vec</span><span> </span><span id="span_26_303">dim</span><span class="symbol" id="span_26_304">,</span><span> </span><span id="span_26_305">Vec</span><span> </span><span id="span_26_307">dim</span><span class="symbol" id="span_26_308">)</span><span> </span><span class="symbol" id="span_26_309">-&gt;</span><span> </span><span id="span_26_311">Vec</span><span> </span><span id="span_26_313">dim</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_28_315">def</span><span> </span><span id="span_28_316">free_displacement</span><span class="symbol" id="span_28_318">(</span><span class="symbol" id="span_28_319">)</span><span> </span><span class="symbol" id="span_28_320">-&gt;&gt;</span><span> </span><span id="span_28_321">Displacement</span><span> </span><span id="span_28_323">dim</span><span> </span><span class="keyword" id="span_28_324">given</span><span> </span><span class="symbol" id="span_28_326">(</span><span id="span_28_327">dim</span><span class="symbol" id="span_28_328">|</span><span id="span_28_330">Ix</span><span class="symbol" id="span_28_331">)</span><span> </span><span class="symbol" id="span_28_332">=</span><span class="comment">
+  </span><span class="symbol" id="span_28_336">\</span><span id="span_28_337">r_1</span><span> </span><span id="span_28_338">r_2</span><span class="symbol" id="span_28_339">.</span><span> </span><span id="span_28_340">r_1</span><span> </span><span class="symbol" id="span_28_341">-</span><span> </span><span id="span_28_343">r_2</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_30_345">def</span><span> </span><span id="span_30_346">free_shift</span><span class="symbol" id="span_30_348">(</span><span class="symbol" id="span_30_349">)</span><span> </span><span class="symbol" id="span_30_350">-&gt;&gt;</span><span> </span><span id="span_30_351">Shift</span><span> </span><span id="span_30_353">dim</span><span> </span><span class="keyword" id="span_30_354">given</span><span> </span><span class="symbol" id="span_30_356">(</span><span id="span_30_357">dim</span><span class="symbol" id="span_30_358">|</span><span id="span_30_360">Ix</span><span class="symbol" id="span_30_361">)</span><span> </span><span class="symbol" id="span_30_362">=</span><span class="comment">
+  </span><span class="symbol" id="span_30_366">\</span><span id="span_30_367">r</span><span> </span><span id="span_30_368">dr</span><span class="symbol" id="span_30_369">.</span><span> </span><span id="span_30_370">r</span><span> </span><span class="symbol" id="span_30_371">+</span><span> </span><span id="span_30_373">dr</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_32_375">def</span><span> </span><span id="span_32_376">periodic_wrap</span><span class="symbol" id="span_32_378">(</span><span id="span_32_379">box</span><span class="symbol" id="span_32_380">:</span><span> </span><span id="span_32_382">Float</span><span class="symbol" id="span_32_383">,</span><span> </span><span id="span_32_384">dr</span><span class="symbol" id="span_32_385">:</span><span> </span><span id="span_32_387">dim</span><span class="symbol" id="span_32_388">=&gt;</span><span id="span_32_390">Float</span><span class="symbol" id="span_32_391">)</span><span> </span><span class="symbol" id="span_32_392">-&gt;</span><span> </span><span class="symbol" id="span_32_394">(</span><span id="span_32_395">dim</span><span class="symbol" id="span_32_396">=&gt;</span><span id="span_32_398">Float</span><span class="symbol" id="span_32_399">)</span><span> </span><span class="keyword" id="span_32_400">given</span><span> </span><span class="symbol" id="span_32_402">(</span><span id="span_32_403">dim</span><span class="symbol" id="span_32_404">|</span><span id="span_32_406">Ix</span><span class="symbol" id="span_32_407">)</span><span> </span><span class="symbol" id="span_32_408">=</span><span class="comment">
+  </span><span class="keyword" id="span_32_412">for</span><span> </span><span id="span_32_413">i</span><span class="symbol" id="span_32_414">.</span><span> </span><span class="symbol" id="span_32_416">(</span><span id="span_32_417">pmod</span><span> </span><span class="symbol" id="span_32_420">(</span><span id="span_32_421">dr</span><span class="symbol" id="span_32_424">[</span><span id="span_32_425">i</span><span class="symbol" id="span_32_426">]</span><span> </span><span class="symbol" id="span_32_427">+</span><span> </span><span id="span_32_429">box</span><span> </span><span class="symbol" id="span_32_430">/</span><span> </span><span class="literal" id="span_32_432">2.0</span><span class="symbol" id="span_32_433">)</span><span> </span><span id="span_32_435">box</span><span class="symbol" id="span_32_436">)</span><span> </span><span class="symbol" id="span_32_437">-</span><span> </span><span id="span_32_439">box</span><span> </span><span class="symbol" id="span_32_440">/</span><span> </span><span class="literal" id="span_32_442">2.0</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_34_444">def</span><span> </span><span id="span_34_445">periodic_displacement</span><span class="symbol" id="span_34_447">(</span><span id="span_34_448">box</span><span class="symbol" id="span_34_449">:</span><span id="span_34_451">Float</span><span class="symbol" id="span_34_452">)</span><span> </span><span class="symbol" id="span_34_453">-&gt;</span><span> </span><span id="span_34_454">Displacement</span><span> </span><span id="span_34_456">dim</span><span> </span><span class="keyword" id="span_34_457">given</span><span> </span><span class="symbol" id="span_34_459">(</span><span id="span_34_460">dim</span><span class="symbol" id="span_34_461">|</span><span id="span_34_463">Ix</span><span class="symbol" id="span_34_464">)</span><span> </span><span class="symbol" id="span_34_465">=</span><span class="comment">
+  </span><span class="symbol" id="span_34_469">\</span><span id="span_34_470">r_1</span><span> </span><span id="span_34_471">r_2</span><span class="symbol" id="span_34_472">.</span><span> </span><span id="span_34_473">periodic_wrap</span><span> </span><span id="span_34_475">box</span><span> </span><span class="symbol" id="span_34_478">(</span><span id="span_34_479">r_1</span><span> </span><span class="symbol" id="span_34_480">-</span><span> </span><span id="span_34_482">r_2</span><span class="symbol" id="span_34_483">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_36_485">def</span><span> </span><span id="span_36_486">periodic_shift</span><span class="symbol" id="span_36_488">(</span><span id="span_36_489">box</span><span class="symbol" id="span_36_490">:</span><span id="span_36_492">Float</span><span class="symbol" id="span_36_493">)</span><span> </span><span class="symbol" id="span_36_494">-&gt;</span><span> </span><span id="span_36_495">Shift</span><span> </span><span id="span_36_497">dim</span><span> </span><span class="keyword" id="span_36_498">given</span><span> </span><span class="symbol" id="span_36_500">(</span><span id="span_36_501">dim</span><span class="symbol" id="span_36_502">|</span><span id="span_36_504">Ix</span><span class="symbol" id="span_36_505">)</span><span> </span><span class="symbol" id="span_36_506">=</span><span class="comment">
+  </span><span class="symbol" id="span_36_510">\</span><span id="span_36_511">r</span><span> </span><span id="span_36_512">dr</span><span class="symbol" id="span_36_513">.</span><span> </span><span class="keyword" id="span_36_515">for</span><span> </span><span id="span_36_516">i</span><span class="symbol" id="span_36_517">.</span><span> </span><span id="span_36_518">pmod</span><span> </span><span class="symbol" id="span_36_521">(</span><span id="span_36_522">r</span><span class="symbol" id="span_36_525">[</span><span id="span_36_526">i</span><span class="symbol" id="span_36_527">]</span><span> </span><span class="symbol" id="span_36_528">+</span><span> </span><span id="span_36_530">dr</span><span class="symbol" id="span_36_533">[</span><span id="span_36_534">i</span><span class="symbol" id="span_36_535">]</span><span class="symbol" id="span_36_536">)</span><span> </span><span id="span_36_538">box</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><h2>Energy Functions</h2>
+</div>
+<div class="code-block"><span class="keyword" id="span_39_540">def</span><span> </span><span id="span_39_541">Energy</span><span class="symbol" id="span_39_543">(</span><span id="span_39_544">n</span><span class="symbol" id="span_39_545">|</span><span id="span_39_547">Ix</span><span class="symbol" id="span_39_548">,</span><span> </span><span id="span_39_549">dim</span><span class="symbol" id="span_39_550">|</span><span id="span_39_552">Ix</span><span class="symbol" id="span_39_553">)</span><span> </span><span class="symbol" id="span_39_554">-&gt;</span><span> </span><span id="span_39_555">Type</span><span> </span><span class="symbol" id="span_39_556">=</span><span> </span><span class="symbol" id="span_39_558">(</span><span id="span_39_559">n</span><span class="symbol" id="span_39_560">=&gt;</span><span id="span_39_562">Vec</span><span> </span><span id="span_39_564">dim</span><span class="symbol" id="span_39_565">)</span><span> </span><span class="symbol" id="span_39_566">-&gt;</span><span> </span><span id="span_39_568">Float</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>The &quot;soft-sphere&quot; energy, as a function of the displacement <code>r</code>.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_42_570">def</span><span> </span><span id="span_42_571">soft_sphere</span><span class="symbol" id="span_42_573">(</span><span id="span_42_574">ε</span><span class="symbol" id="span_42_575">:</span><span> </span><span id="span_42_577">Float</span><span class="symbol" id="span_42_578">,</span><span> </span><span id="span_42_579">α</span><span class="symbol" id="span_42_580">:</span><span> </span><span id="span_42_582">Float</span><span class="symbol" id="span_42_583">,</span><span> </span><span id="span_42_584">σ</span><span class="symbol" id="span_42_585">:</span><span> </span><span id="span_42_587">Float</span><span class="symbol" id="span_42_588">,</span><span> </span><span id="span_42_589">r</span><span class="symbol" id="span_42_590">:</span><span> </span><span id="span_42_592">Float</span><span class="symbol" id="span_42_593">)</span><span> </span><span class="symbol" id="span_42_594">-&gt;</span><span> </span><span id="span_42_595">Float</span><span> </span><span class="symbol" id="span_42_596">=</span><span class="comment">
+  </span><span class="keyword" id="span_42_600">case</span><span> </span><span id="span_42_601">r</span><span> </span><span class="symbol" id="span_42_602">&lt;</span><span> </span><span id="span_42_604">σ</span><span> </span><span class="keyword" id="span_42_605">of</span><span class="comment">
+    </span><span id="span_42_606">True</span><span>  </span><span class="symbol" id="span_42_607">-&gt;</span><span> </span><span id="span_42_608">ε</span><span> </span><span class="symbol" id="span_42_609">/</span><span> </span><span id="span_42_611">α</span><span> </span><span class="symbol" id="span_42_612">*</span><span> </span><span id="span_42_614">pow</span><span> </span><span class="symbol" id="span_42_617">(</span><span class="literal" id="span_42_618">1</span><span> </span><span class="symbol" id="span_42_619">-</span><span> </span><span id="span_42_621">r</span><span> </span><span class="symbol" id="span_42_622">/</span><span> </span><span id="span_42_624">σ</span><span class="symbol" id="span_42_625">)</span><span> </span><span id="span_42_627">α</span><span class="comment">
+    </span><span id="span_42_628">False</span><span> </span><span class="symbol" id="span_42_629">-&gt;</span><span> </span><span class="literal" id="span_42_630">0.0</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_44_632">def</span><span> </span><span id="span_44_633">harmonic_soft_sphere</span><span class="symbol" id="span_44_635">(</span><span id="span_44_636">sigma</span><span class="symbol" id="span_44_637">:</span><span id="span_44_639">Float</span><span class="symbol" id="span_44_640">)</span><span> </span><span class="symbol" id="span_44_641">-&gt;</span><span> </span><span class="symbol" id="span_44_643">(</span><span id="span_44_644">Float</span><span class="symbol" id="span_44_645">)</span><span> </span><span class="symbol" id="span_44_646">-&gt;</span><span> </span><span id="span_44_648">Float</span><span> </span><span class="symbol" id="span_44_649">=</span><span> </span><span class="symbol" id="span_44_651">\</span><span id="span_44_652">r</span><span class="symbol" id="span_44_653">.</span><span class="comment">
+  </span><span id="span_44_656">soft_sphere</span><span> </span><span class="literal" id="span_44_658">1.0</span><span> </span><span class="literal" id="span_44_660">2.0</span><span> </span><span id="span_44_662">sigma</span><span> </span><span id="span_44_664">r</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Here we have a naive pairwise energy function constructor, that
+promotes a two-particle energy to a whole-system energy by just
+applying it to every pair of distinct particles.  We start with this
+to have something to test with.</p>
+</div>
+<div class="code-block">def pair_energy(
+  energy: (Float) -&gt; Float,
+  displacement: Displacement dim,
+  r: n=&gt;Vec dim
+  ) -&gt; Float given (n|Ix, dim|Ix) =
+  sum $ for i. sum for j:(..&lt;i).
+    energy $ norm $ displacement r[i] r[inject j]
+
+</div><div class="err-result">85:30:
+   |
+85 |   sum $ for i. sum for j:(..&lt;i).
+   |                              ^
+unexpected &#39;i&#39;
+expecting symbol name
+</div>
+<div class="prose-block"><h2>Minimization Functions</h2>
+</div>
+<div class="prose-block"><p>Now we develop the FIRE Descent algorithm.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_50_666">struct</span><span> </span><span id="span_50_667">FireDescentState</span><span class="symbol" id="span_50_669">(</span><span id="span_50_670">n</span><span class="symbol" id="span_50_671">|</span><span id="span_50_673">Ix</span><span class="symbol" id="span_50_674">,</span><span> </span><span id="span_50_675">dim</span><span class="symbol" id="span_50_676">|</span><span id="span_50_678">Ix</span><span class="symbol" id="span_50_679">)</span><span> </span><span class="symbol" id="span_50_680">=</span><span class="comment">
+  </span><span id="span_50_681">R</span><span class="symbol" id="span_50_682">:</span><span>     </span><span class="symbol" id="span_50_684">(</span><span id="span_50_685">n</span><span class="symbol" id="span_50_686">=&gt;</span><span id="span_50_688">Vec</span><span> </span><span id="span_50_690">dim</span><span class="symbol" id="span_50_691">)</span><span class="comment">
+  </span><span id="span_50_692">V</span><span class="symbol" id="span_50_693">:</span><span>     </span><span class="symbol" id="span_50_695">(</span><span id="span_50_696">n</span><span class="symbol" id="span_50_697">=&gt;</span><span id="span_50_699">Vec</span><span> </span><span id="span_50_701">dim</span><span class="symbol" id="span_50_702">)</span><span class="comment">
+  </span><span id="span_50_703">F</span><span class="symbol" id="span_50_704">:</span><span>     </span><span class="symbol" id="span_50_706">(</span><span id="span_50_707">n</span><span class="symbol" id="span_50_708">=&gt;</span><span id="span_50_710">Vec</span><span> </span><span id="span_50_712">dim</span><span class="symbol" id="span_50_713">)</span><span class="comment">
+  </span><span id="span_50_714">dt</span><span class="symbol" id="span_50_715">:</span><span>    </span><span id="span_50_716">Float</span><span class="comment">
+  </span><span id="span_50_717">alpha</span><span class="symbol" id="span_50_718">:</span><span> </span><span id="span_50_719">Float</span><span class="comment">
+  </span><span id="span_50_720">n_pos</span><span class="symbol" id="span_50_721">:</span><span> </span><span id="span_50_722">Int</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_52_724">def</span><span> </span><span id="span_52_725">fire_descent_init</span><span class="symbol" id="span_52_727">(</span><span class="comment">
+  </span><span id="span_52_728">dt</span><span class="symbol" id="span_52_729">:</span><span> </span><span id="span_52_731">Float</span><span class="symbol" id="span_52_732">,</span><span class="comment">
+  </span><span id="span_52_733">alpha</span><span class="symbol" id="span_52_734">:</span><span> </span><span id="span_52_736">Float</span><span class="symbol" id="span_52_737">,</span><span class="comment">
+  </span><span id="span_52_738">energy</span><span class="symbol" id="span_52_739">:</span><span> </span><span id="span_52_741">Energy</span><span class="symbol" id="span_52_744">(</span><span id="span_52_745">n</span><span class="symbol" id="span_52_746">,</span><span> </span><span id="span_52_747">dim</span><span class="symbol" id="span_52_748">)</span><span class="symbol" id="span_52_749">,</span><span class="comment">
+  </span><span id="span_52_750">r</span><span class="symbol" id="span_52_751">:</span><span> </span><span id="span_52_753">n</span><span class="symbol" id="span_52_754">=&gt;</span><span id="span_52_756">Vec</span><span> </span><span id="span_52_758">dim</span><span class="comment">
+  </span><span class="symbol" id="span_52_759">)</span><span> </span><span class="symbol" id="span_52_760">-&gt;</span><span> </span><span id="span_52_761">FireDescentState</span><span> </span><span id="span_52_763">n</span><span> </span><span id="span_52_765">dim</span><span> </span><span class="keyword" id="span_52_766">given</span><span> </span><span class="symbol" id="span_52_768">(</span><span id="span_52_769">n</span><span class="symbol" id="span_52_770">|</span><span id="span_52_772">Ix</span><span class="symbol" id="span_52_773">,</span><span> </span><span id="span_52_774">dim</span><span class="symbol" id="span_52_775">|</span><span id="span_52_777">Ix</span><span class="symbol" id="span_52_778">)</span><span> </span><span class="symbol" id="span_52_779">=</span><span class="comment">
+  </span><span id="span_52_782">force</span><span> </span><span class="symbol" id="span_52_783">=</span><span> </span><span class="symbol" id="span_52_785">\</span><span id="span_52_786">rp</span><span class="symbol" id="span_52_787">.</span><span> </span><span class="symbol" id="span_52_788">-</span><span class="symbol" id="span_52_791">(</span><span id="span_52_792">grad</span><span> </span><span id="span_52_794">energy</span><span class="symbol" id="span_52_795">)</span><span> </span><span id="span_52_797">rp</span><span class="comment">
+  </span><span id="span_52_799">V</span><span> </span><span class="symbol" id="span_52_800">=</span><span> </span><span class="keyword" id="span_52_802">for</span><span> </span><span id="span_52_803">i</span><span class="symbol" id="span_52_804">:</span><span id="span_52_806">n</span><span> </span><span id="span_52_807">j</span><span class="symbol" id="span_52_808">:</span><span id="span_52_810">dim</span><span class="symbol" id="span_52_811">.</span><span> </span><span class="literal" id="span_52_812">0.0</span><span class="comment">
+  </span><span id="span_52_814">F</span><span> </span><span class="symbol" id="span_52_815">=</span><span> </span><span id="span_52_816">force</span><span> </span><span id="span_52_818">r</span><span class="comment">
+  </span><span id="span_52_820">n_pos</span><span class="symbol" id="span_52_821">:</span><span> </span><span id="span_52_823">Int</span><span> </span><span class="symbol" id="span_52_824">=</span><span> </span><span class="literal" id="span_52_825">0</span><span class="comment">
+  </span><span id="span_52_827">FireDescentState</span><span class="symbol" id="span_52_830">(</span><span id="span_52_831">r</span><span class="symbol" id="span_52_832">,</span><span> </span><span id="span_52_833">V</span><span class="symbol" id="span_52_834">,</span><span> </span><span id="span_52_835">F</span><span class="symbol" id="span_52_836">,</span><span> </span><span id="span_52_837">dt</span><span class="symbol" id="span_52_838">,</span><span> </span><span id="span_52_839">alpha</span><span class="symbol" id="span_52_840">,</span><span> </span><span id="span_52_841">n_pos</span><span class="symbol" id="span_52_842">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_54_844">def</span><span> </span><span id="span_54_845">fire_descent_step</span><span class="symbol" id="span_54_847">(</span><span class="comment">
+  </span><span id="span_54_848">shift</span><span class="symbol" id="span_54_849">:</span><span> </span><span id="span_54_851">Shift</span><span> </span><span id="span_54_853">dim</span><span class="symbol" id="span_54_854">,</span><span class="comment">
+  </span><span id="span_54_855">energy</span><span class="symbol" id="span_54_856">:</span><span> </span><span id="span_54_858">Energy</span><span> </span><span id="span_54_860">n</span><span> </span><span id="span_54_862">dim</span><span class="symbol" id="span_54_863">,</span><span class="comment">
+  </span><span id="span_54_864">state</span><span class="symbol" id="span_54_865">:</span><span> </span><span id="span_54_867">FireDescentState</span><span> </span><span id="span_54_869">n</span><span> </span><span id="span_54_871">dim</span><span class="comment">
+  </span><span class="symbol" id="span_54_872">)</span><span> </span><span class="symbol" id="span_54_873">-&gt;</span><span> </span><span id="span_54_874">FireDescentState</span><span> </span><span id="span_54_876">n</span><span> </span><span id="span_54_878">dim</span><span> </span><span class="keyword" id="span_54_879">given</span><span> </span><span class="symbol" id="span_54_881">(</span><span id="span_54_882">n</span><span class="symbol" id="span_54_883">|</span><span id="span_54_885">Ix</span><span class="symbol" id="span_54_886">,</span><span> </span><span id="span_54_887">dim</span><span class="symbol" id="span_54_888">|</span><span id="span_54_890">Ix</span><span class="symbol" id="span_54_891">)</span><span> </span><span class="symbol" id="span_54_892">=</span><span class="comment">
+  # Constants that parameterize the FIRE algorithm.
+  # TODO: Thread these constants through somehow.
+  # dougalm@ is there a canonical way to do this?
+  </span><span id="span_54_895">dt_start</span><span> </span><span class="symbol" id="span_54_896">=</span><span> </span><span class="literal" id="span_54_897">0.1</span><span class="comment">
+  </span><span id="span_54_899">dt_max</span><span> </span><span class="symbol" id="span_54_900">=</span><span> </span><span class="literal" id="span_54_901">0.4</span><span class="comment">
+  </span><span id="span_54_903">n_min</span><span> </span><span class="symbol" id="span_54_904">=</span><span> </span><span class="literal" id="span_54_905">5</span><span class="comment">
+  </span><span id="span_54_907">f_inc</span><span> </span><span class="symbol" id="span_54_908">=</span><span> </span><span class="literal" id="span_54_909">1.1</span><span class="comment">
+  </span><span id="span_54_911">f_dec</span><span> </span><span class="symbol" id="span_54_912">=</span><span> </span><span class="literal" id="span_54_913">0.5</span><span class="comment">
+  </span><span id="span_54_915">f_alpha</span><span> </span><span class="symbol" id="span_54_916">=</span><span> </span><span class="literal" id="span_54_917">0.99</span><span class="comment">
+  </span><span id="span_54_919">alpha_start</span><span> </span><span class="symbol" id="span_54_920">=</span><span> </span><span class="literal" id="span_54_921">0.1</span><span class="comment">
+
+  </span><span id="span_54_923">ε</span><span> </span><span class="symbol" id="span_54_924">=</span><span> </span><span class="literal" id="span_54_925">0.000000001</span><span class="comment">
+
+  </span><span id="span_54_927">force</span><span> </span><span class="symbol" id="span_54_928">=</span><span> </span><span class="symbol" id="span_54_930">\</span><span id="span_54_931">r</span><span class="symbol" id="span_54_932">.</span><span> </span><span class="symbol" id="span_54_933">-</span><span class="symbol" id="span_54_936">(</span><span id="span_54_937">grad</span><span> </span><span id="span_54_939">energy</span><span class="symbol" id="span_54_940">)</span><span> </span><span id="span_54_942">r</span><span class="comment">
+
+  # FIRE algorithm.
+  # (MkFireDescentState {R, V, F, dt, alpha, n_pos}) = state
+  </span><span id="span_54_944">dt</span><span> </span><span class="symbol" id="span_54_945">=</span><span> </span><span id="span_54_946">state</span><span class="symbol" id="span_54_948">.</span><span id="span_54_949">dt</span><span class="comment">
+  </span><span id="span_54_951">alpha</span><span> </span><span class="symbol" id="span_54_952">=</span><span> </span><span id="span_54_953">state</span><span class="symbol" id="span_54_955">.</span><span id="span_54_956">alpha</span><span class="comment">
+  </span><span id="span_54_958">n_pos</span><span> </span><span class="symbol" id="span_54_959">=</span><span> </span><span id="span_54_960">state</span><span class="symbol" id="span_54_962">.</span><span id="span_54_963">n_pos</span><span class="comment">
+  # Do a Velocity-Verlet step.
+  </span><span id="span_54_965">R</span><span> </span><span class="symbol" id="span_54_966">=</span><span> </span><span class="keyword" id="span_54_968">for</span><span> </span><span id="span_54_969">i</span><span class="symbol" id="span_54_970">.</span><span> </span><span id="span_54_971">shift</span><span> </span><span id="span_54_973">state</span><span class="symbol" id="span_54_975">.</span><span id="span_54_976">R</span><span class="symbol" id="span_54_979">[</span><span id="span_54_980">i</span><span class="symbol" id="span_54_981">]</span><span> </span><span class="symbol" id="span_54_984">(</span><span id="span_54_985">state</span><span class="symbol" id="span_54_987">.</span><span id="span_54_988">V</span><span class="symbol" id="span_54_991">[</span><span id="span_54_992">i</span><span class="symbol" id="span_54_993">]</span><span> </span><span class="symbol" id="span_54_994">*.</span><span> </span><span id="span_54_996">dt</span><span> </span><span class="symbol" id="span_54_997">+</span><span> </span><span id="span_54_999">state</span><span class="symbol" id="span_54_1001">.</span><span id="span_54_1002">F</span><span class="symbol" id="span_54_1005">[</span><span id="span_54_1006">i</span><span class="symbol" id="span_54_1007">]</span><span> </span><span class="symbol" id="span_54_1008">*.</span><span> </span><span id="span_54_1010">pow</span><span> </span><span id="span_54_1012">dt</span><span> </span><span class="literal" id="span_54_1014">2</span><span class="symbol" id="span_54_1015">)</span><span class="comment">
+  </span><span id="span_54_1017">F_old</span><span> </span><span class="symbol" id="span_54_1018">=</span><span> </span><span id="span_54_1019">state</span><span class="symbol" id="span_54_1021">.</span><span id="span_54_1022">F</span><span class="comment">
+  </span><span id="span_54_1024">F</span><span> </span><span class="symbol" id="span_54_1025">=</span><span> </span><span id="span_54_1026">force</span><span> </span><span id="span_54_1028">R</span><span class="comment">
+  </span><span id="span_54_1030">V</span><span> </span><span class="symbol" id="span_54_1031">=</span><span> </span><span id="span_54_1032">state</span><span class="symbol" id="span_54_1034">.</span><span id="span_54_1035">V</span><span> </span><span class="symbol" id="span_54_1036">+</span><span> </span><span id="span_54_1038">dt</span><span> </span><span class="symbol" id="span_54_1039">*</span><span> </span><span class="literal" id="span_54_1041">0.5</span><span> </span><span class="symbol" id="span_54_1042">.*</span><span> </span><span class="symbol" id="span_54_1045">(</span><span id="span_54_1046">F_old</span><span> </span><span class="symbol" id="span_54_1047">+</span><span> </span><span id="span_54_1049">F</span><span class="symbol" id="span_54_1050">)</span><span class="comment">
+
+  # Rescale the velocity.
+  </span><span id="span_54_1052">F_norm</span><span> </span><span class="symbol" id="span_54_1053">=</span><span> </span><span id="span_54_1054">sqrt</span><span> </span><span class="symbol" id="span_54_1055">$</span><span> </span><span id="span_54_1057">sum</span><span> </span><span class="symbol" id="span_54_1058">$</span><span> </span><span id="span_54_1060">sum</span><span> </span><span class="keyword" id="span_54_1063">for</span><span> </span><span id="span_54_1064">i</span><span> </span><span id="span_54_1065">j</span><span class="symbol" id="span_54_1066">.</span><span> </span><span id="span_54_1067">pow</span><span> </span><span id="span_54_1069">F</span><span class="symbol" id="span_54_1072">[</span><span id="span_54_1073">i</span><span class="symbol" id="span_54_1074">,</span><span> </span><span id="span_54_1075">j</span><span class="symbol" id="span_54_1076">]</span><span> </span><span class="literal" id="span_54_1078">2</span><span class="comment">
+  </span><span id="span_54_1080">V_norm</span><span> </span><span class="symbol" id="span_54_1081">=</span><span> </span><span id="span_54_1082">sqrt</span><span> </span><span class="symbol" id="span_54_1083">$</span><span> </span><span id="span_54_1085">sum</span><span> </span><span class="symbol" id="span_54_1086">$</span><span> </span><span id="span_54_1088">sum</span><span> </span><span class="keyword" id="span_54_1091">for</span><span> </span><span id="span_54_1092">i</span><span> </span><span id="span_54_1093">j</span><span class="symbol" id="span_54_1094">.</span><span> </span><span id="span_54_1095">pow</span><span> </span><span id="span_54_1097">V</span><span class="symbol" id="span_54_1100">[</span><span id="span_54_1101">i</span><span class="symbol" id="span_54_1102">,</span><span> </span><span id="span_54_1103">j</span><span class="symbol" id="span_54_1104">]</span><span> </span><span class="literal" id="span_54_1106">2</span><span class="comment">
+
+  </span><span id="span_54_1108">V</span><span> </span><span class="symbol" id="span_54_1109">=</span><span> </span><span id="span_54_1110">V</span><span> </span><span class="symbol" id="span_54_1111">+</span><span> </span><span id="span_54_1113">alpha</span><span> </span><span class="symbol" id="span_54_1114">.*</span><span> </span><span class="symbol" id="span_54_1117">(</span><span id="span_54_1118">F</span><span> </span><span class="symbol" id="span_54_1119">*.</span><span> </span><span id="span_54_1121">V_norm</span><span> </span><span class="symbol" id="span_54_1122">/</span><span> </span><span class="symbol" id="span_54_1125">(</span><span id="span_54_1126">F_norm</span><span> </span><span class="symbol" id="span_54_1127">+</span><span> </span><span id="span_54_1129">ε</span><span class="symbol" id="span_54_1130">)</span><span> </span><span class="symbol" id="span_54_1131">-</span><span> </span><span id="span_54_1133">V</span><span class="symbol" id="span_54_1134">)</span><span class="comment">
+
+  # Check whether the force is aligned with the velocity.
+  </span><span id="span_54_1136">FdotV</span><span> </span><span class="symbol" id="span_54_1137">=</span><span> </span><span id="span_54_1138">sum</span><span> </span><span class="symbol" id="span_54_1139">$</span><span> </span><span id="span_54_1141">sum</span><span> </span><span class="keyword" id="span_54_1144">for</span><span> </span><span id="span_54_1145">i</span><span> </span><span id="span_54_1146">j</span><span class="symbol" id="span_54_1147">.</span><span> </span><span id="span_54_1148">F</span><span class="symbol" id="span_54_1151">[</span><span id="span_54_1152">i</span><span class="symbol" id="span_54_1153">,</span><span> </span><span id="span_54_1154">j</span><span class="symbol" id="span_54_1155">]</span><span> </span><span class="symbol" id="span_54_1156">*</span><span> </span><span id="span_54_1158">V</span><span class="symbol" id="span_54_1161">[</span><span id="span_54_1162">i</span><span class="symbol" id="span_54_1163">,</span><span> </span><span id="span_54_1164">j</span><span class="symbol" id="span_54_1165">]</span><span class="comment">
+
+  # Decide whether to increase the speed of the simulation or reduce it.
+  </span><span class="symbol" id="span_54_1168">(</span><span id="span_54_1169">n_pos</span><span class="symbol" id="span_54_1170">,</span><span> </span><span id="span_54_1171">dt</span><span class="symbol" id="span_54_1172">,</span><span> </span><span id="span_54_1173">alpha</span><span class="symbol" id="span_54_1174">)</span><span> </span><span class="symbol" id="span_54_1175">=</span><span> </span><span class="keyword" id="span_54_1177">if</span><span> </span><span id="span_54_1178">FdotV</span><span> </span><span class="symbol" id="span_54_1179">&gt;=</span><span> </span><span class="literal" id="span_54_1181">0.0</span><span class="comment">
+    </span><span class="keyword" id="span_54_1182">then</span><span class="comment">
+      </span><span id="span_54_1185">dt&#39;</span><span> </span><span class="symbol" id="span_54_1186">=</span><span> </span><span class="keyword" id="span_54_1188">if</span><span> </span><span id="span_54_1189">n_pos</span><span> </span><span class="symbol" id="span_54_1190">&gt;=</span><span> </span><span id="span_54_1192">n_min</span><span> </span><span class="keyword" id="span_54_1193">then</span><span> </span><span class="symbol" id="span_54_1195">(</span><span id="span_54_1196">min</span><span> </span><span class="symbol" id="span_54_1199">(</span><span id="span_54_1200">dt</span><span> </span><span class="symbol" id="span_54_1201">*</span><span> </span><span id="span_54_1203">f_inc</span><span class="symbol" id="span_54_1204">)</span><span> </span><span id="span_54_1206">dt_max</span><span class="symbol" id="span_54_1207">)</span><span> </span><span class="keyword" id="span_54_1208">else</span><span> </span><span id="span_54_1209">dt</span><span class="comment">
+      </span><span id="span_54_1211">alpha&#39;</span><span> </span><span class="symbol" id="span_54_1212">=</span><span> </span><span class="keyword" id="span_54_1214">if</span><span> </span><span id="span_54_1215">n_pos</span><span> </span><span class="symbol" id="span_54_1216">&gt;=</span><span> </span><span id="span_54_1218">n_min</span><span> </span><span class="keyword" id="span_54_1219">then</span><span> </span><span class="symbol" id="span_54_1221">(</span><span id="span_54_1222">alpha</span><span> </span><span class="symbol" id="span_54_1223">*</span><span> </span><span id="span_54_1225">f_alpha</span><span class="symbol" id="span_54_1226">)</span><span> </span><span class="keyword" id="span_54_1227">else</span><span> </span><span id="span_54_1228">alpha</span><span class="comment">
+      </span><span class="symbol" id="span_54_1231">(</span><span id="span_54_1232">n_pos</span><span> </span><span class="symbol" id="span_54_1233">+</span><span> </span><span class="literal" id="span_54_1235">1</span><span class="symbol" id="span_54_1236">,</span><span> </span><span id="span_54_1237">dt&#39;</span><span class="symbol" id="span_54_1238">,</span><span> </span><span id="span_54_1239">alpha&#39;</span><span class="symbol" id="span_54_1240">)</span><span class="comment">
+    </span><span class="keyword" id="span_54_1241">else</span><span> </span><span class="symbol" id="span_54_1243">(</span><span class="literal" id="span_54_1244">0</span><span class="symbol" id="span_54_1245">,</span><span> </span><span id="span_54_1246">dt</span><span> </span><span class="symbol" id="span_54_1247">*</span><span> </span><span id="span_54_1249">f_dec</span><span class="symbol" id="span_54_1250">,</span><span> </span><span id="span_54_1251">alpha_start</span><span class="symbol" id="span_54_1252">)</span><span class="comment">
+  </span><span id="span_54_1254">V</span><span> </span><span class="symbol" id="span_54_1255">=</span><span> </span><span class="keyword" id="span_54_1257">if</span><span> </span><span id="span_54_1258">FdotV</span><span> </span><span class="symbol" id="span_54_1259">&gt;=</span><span> </span><span class="literal" id="span_54_1261">0.0</span><span> </span><span class="keyword" id="span_54_1262">then</span><span> </span><span id="span_54_1263">V</span><span> </span><span class="keyword" id="span_54_1264">else</span><span> </span><span id="span_54_1265">zero</span><span class="comment">
+
+  </span><span id="span_54_1267">FireDescentState</span><span class="symbol" id="span_54_1270">(</span><span id="span_54_1271">R</span><span class="symbol" id="span_54_1272">,</span><span> </span><span id="span_54_1273">V</span><span class="symbol" id="span_54_1274">,</span><span> </span><span id="span_54_1275">F</span><span class="symbol" id="span_54_1276">,</span><span> </span><span id="span_54_1277">dt</span><span class="symbol" id="span_54_1278">,</span><span> </span><span id="span_54_1279">alpha</span><span class="symbol" id="span_54_1280">,</span><span> </span><span id="span_54_1281">n_pos</span><span class="symbol" id="span_54_1282">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><h2>Drawing</h2>
+</div>
+<div class="code-block"><span class="keyword" id="span_57_1283">import</span><span> </span><span id="span_57_1284">png</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_58_1285">import</span><span> </span><span id="span_58_1286">diagram</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Now a tool to draw a two-dimensional system, where each particle is a
+disk of given size.</p>
+</div>
+<div class="code-block"><span id="span_61_1288">TwoDimensions</span><span> </span><span class="symbol" id="span_61_1289">=</span><span> </span><span id="span_61_1290">Fin</span><span> </span><span class="literal" id="span_61_1292">2</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_63_1294">def</span><span> </span><span id="span_63_1295">draw_system</span><span class="symbol" id="span_63_1297">(</span><span id="span_63_1298">radius</span><span class="symbol" id="span_63_1299">,</span><span> </span><span id="span_63_1300">r</span><span class="symbol" id="span_63_1301">:</span><span> </span><span id="span_63_1303">n</span><span class="symbol" id="span_63_1304">=&gt;</span><span id="span_63_1306">Vec</span><span> </span><span id="span_63_1308">TwoDimensions</span><span class="symbol" id="span_63_1309">)</span><span> </span><span class="symbol" id="span_63_1310">-&gt;</span><span> </span><span id="span_63_1311">Diagram</span><span> </span><span class="keyword" id="span_63_1312">given</span><span> </span><span class="symbol" id="span_63_1314">(</span><span id="span_63_1315">n</span><span class="symbol" id="span_63_1316">|</span><span id="span_63_1318">Ix</span><span class="symbol" id="span_63_1319">)</span><span> </span><span class="symbol" id="span_63_1320">=</span><span class="comment">
+  </span><span id="span_63_1323">disks</span><span> </span><span class="symbol" id="span_63_1324">=</span><span> </span><span id="span_63_1325">concat_diagrams</span><span> </span><span class="keyword" id="span_63_1328">for</span><span> </span><span id="span_63_1329">i</span><span class="symbol" id="span_63_1330">.</span><span class="comment">
+    </span><span id="span_63_1333">circle</span><span> </span><span id="span_63_1335">radius</span><span> </span><span class="symbol" id="span_63_1336">|</span><span> </span><span id="span_63_1338">move_xy</span><span class="symbol" id="span_63_1341">(</span><span id="span_63_1342">r</span><span class="symbol" id="span_63_1345">[</span><span id="span_63_1346">i</span><span class="symbol" id="span_63_1347">,</span><span> </span><span class="symbol" id="span_63_1349">(</span><span class="literal" id="span_63_1350">0</span><span> </span><span class="symbol" id="span_63_1351">@</span><span> </span><span id="span_63_1353">TwoDimensions</span><span class="symbol" id="span_63_1354">)</span><span class="symbol" id="span_63_1355">]</span><span class="symbol" id="span_63_1356">,</span><span> </span><span id="span_63_1357">r</span><span class="symbol" id="span_63_1360">[</span><span id="span_63_1361">i</span><span class="symbol" id="span_63_1362">,</span><span> </span><span class="symbol" id="span_63_1364">(</span><span class="literal" id="span_63_1365">1</span><span> </span><span class="symbol" id="span_63_1366">@</span><span> </span><span id="span_63_1368">TwoDimensions</span><span class="symbol" id="span_63_1369">)</span><span class="symbol" id="span_63_1370">]</span><span class="symbol" id="span_63_1371">)</span><span class="comment">
+  </span><span id="span_63_1373">disks</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><h2>Example</h2>
+<p>Initialize a system randomly.</p>
+</div>
+<div class="code-block"><span id="span_66_1375">N_small</span><span> </span><span class="symbol" id="span_66_1376">=</span><span> </span><span class="literal" id="span_66_1377">500</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_67_1379">d</span><span> </span><span class="symbol" id="span_67_1380">=</span><span> </span><span class="literal" id="span_67_1381">2</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_68_1383">L_small</span><span> </span><span class="symbol" id="span_68_1384">=</span><span> </span><span id="span_68_1385">box_size_at_number_density</span><span> </span><span class="symbol" id="span_68_1388">(</span><span id="span_68_1389">n_to_i</span><span> </span><span id="span_68_1391">N_small</span><span class="symbol" id="span_68_1392">)</span><span> </span><span class="literal" id="span_68_1394">1.2</span><span> </span><span class="symbol" id="span_68_1397">(</span><span id="span_68_1398">n_to_i</span><span> </span><span id="span_68_1400">d</span><span class="symbol" id="span_68_1401">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># We will simulate in a box of this side length
+</span></div>
+<div class="code-block"><span id="span_71_1403">L_small</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_73_1405">R_init_small</span><span> </span><span class="symbol" id="span_73_1406">=</span><span> </span><span id="span_73_1407">rand_mat</span><span> </span><span id="span_73_1409">N_small</span><span> </span><span id="span_73_1411">d</span><span> </span><span class="symbol" id="span_73_1414">(</span><span class="symbol" id="span_73_1416">\</span><span id="span_73_1417">k</span><span class="symbol" id="span_73_1418">.</span><span> </span><span id="span_73_1419">L_small</span><span> </span><span class="symbol" id="span_73_1420">*</span><span> </span><span id="span_73_1422">rand</span><span> </span><span id="span_73_1424">k</span><span class="symbol" id="span_73_1425">)</span><span> </span><span class="symbol" id="span_73_1428">(</span><span id="span_73_1429">new_key</span><span> </span><span class="literal" id="span_73_1431">0</span><span class="symbol" id="span_73_1432">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>The initial state of our random system</p>
+</div>
+<div class="code-block">%time
+:html render_svg (draw_system 0.5 R_init_small) (Point(0.0, 0.0), Point(L_small, L_small))
+&gt; &lt;html output&gt;
+&gt;
+&gt; Compile time: 309.318 ms
+&gt; Run time:     17.076 ms
+
+</div><div class="err-result">193:6:
+    |
+193 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>Define energy function.  Note the <code>preiodic_displacement</code>, which means
+our system will be evolving on a torus.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_78_1434">def</span><span> </span><span id="span_78_1435">energy</span><span class="symbol" id="span_78_1437">(</span><span id="span_78_1438">pos</span><span class="symbol" id="span_78_1439">:</span><span> </span><span id="span_78_1441">n</span><span class="symbol" id="span_78_1442">=&gt;</span><span id="span_78_1444">d</span><span class="symbol" id="span_78_1445">=&gt;</span><span id="span_78_1447">Float</span><span class="symbol" id="span_78_1448">)</span><span> </span><span class="symbol" id="span_78_1449">-&gt;</span><span> </span><span id="span_78_1450">Float</span><span> </span><span class="keyword" id="span_78_1451">given</span><span> </span><span class="symbol" id="span_78_1453">(</span><span id="span_78_1454">n</span><span class="symbol" id="span_78_1455">|</span><span id="span_78_1457">Ix</span><span class="symbol" id="span_78_1458">,</span><span> </span><span id="span_78_1459">d</span><span class="symbol" id="span_78_1460">|</span><span id="span_78_1462">Ix</span><span class="symbol" id="span_78_1463">)</span><span class="comment">
+  </span><span class="symbol" id="span_78_1464">=</span><span> </span><span id="span_78_1465">pair_energy</span><span> </span><span class="symbol" id="span_78_1468">(</span><span id="span_78_1469">harmonic_soft_sphere</span><span> </span><span class="literal" id="span_78_1471">1.0</span><span class="symbol" id="span_78_1472">)</span><span> </span><span class="symbol" id="span_78_1475">(</span><span id="span_78_1476">periodic_displacement</span><span> </span><span id="span_78_1478">L_small</span><span class="symbol" id="span_78_1479">)</span><span> </span><span id="span_78_1481">pos</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Here's the initial energy we compute for our system.</p>
+</div>
+<div class="code-block"><span class="comment">:</span><span id="span_81_1482">t</span><span> </span><span id="span_81_1483">energy</span><span> </span><span id="span_81_1485">R_init_small</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_83_1487">energy</span><span> </span><span id="span_83_1489">R_init_small</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Initialize a simulation</p>
+</div>
+<div class="code-block"><span id="span_86_1491">state_small</span><span> </span><span class="symbol" id="span_86_1492">=</span><span> </span><span id="span_86_1493">fire_descent_init</span><span> </span><span class="literal" id="span_86_1495">0.1</span><span> </span><span class="literal" id="span_86_1497">0.1</span><span> </span><span id="span_86_1499">energy</span><span> </span><span id="span_86_1501">R_init_small</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>and test one step of minimization.  The energy decreases from the
+initial, as expected:</p>
+</div>
+<div class="code-block"><span id="span_89_1503">energy</span><span> </span><span class="symbol" id="span_89_1504">$</span><span> </span><span id="span_89_1506">fire_descent_step</span><span class="symbol" id="span_89_1509">(</span><span id="span_89_1510">free_shift</span><span class="symbol" id="span_89_1511">,</span><span> </span><span id="span_89_1512">energy</span><span class="symbol" id="span_89_1513">,</span><span> </span><span id="span_89_1514">state_small</span><span class="symbol" id="span_89_1515">)</span><span class="symbol" id="span_89_1517">.</span><span id="span_89_1518">R</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Now we can test that our code basically works by running 100 steps of
+minimization.</p>
+</div>
+<div class="code-block">%time
+(state_small&#39;, energies) = scan state_small \i:(Fin 100) s.
+  s&#39; = fire_descent_step (periodic_shift L_small) energy s
+  (s&#39;, energy $ s&#39;.R)
+&gt;
+&gt; Compile time: 698.365 ms
+&gt; Run time:     942.147 ms
+
+</div><div class="err-result">227:6:
+    |
+227 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>Here's how the energy decreases over time.</p>
+</div>
+<div class="code-block">%time
+:html show_plot $ y_plot energies
+&gt; &lt;html output&gt;
+&gt;
+&gt; Compile time: 724.795 ms
+&gt; Run time:     3.076 ms
+
+</div><div class="err-result">237:6:
+    |
+237 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>Here's what the system looks like after minimization.</p>
+</div>
+<div class="code-block">%time
+:html render_svg (draw_system 0.5 (state_small&#39;.R)) (Point(0.0, 0.0), Point(L_small, L_small))
+&gt; &lt;html output&gt;
+&gt;
+&gt; Compile time: 318.742 ms
+&gt; Run time:     14.919 ms
+
+</div><div class="err-result">246:6:
+    |
+246 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><h2>Neighbors optimization</h2>
+</div>
+<div class="prose-block"><p>The above <code>pair_energy</code> function will compute the influence of every atom on
+every other atom, regardless of how far apart they are.</p>
+</div>
+<div class="prose-block"><p>To simulate more efficiently, we'd like to approximate the pairwise
+energy with an energy that only includes contributions from atoms that
+are close enough to each other that we wish not to neglect them.</p>
+</div>
+<div class="prose-block"><p>This is a two-step operation:</p>
+<ul>
+<li>Break the simulation volume into a grid of cells, and do a linear
+pass over the atoms to group them by which cell each is in.</li>
+<li>Traverse every pair of adjacent cells and compute energy terms for
+every pair of atoms only in those cells, and no others.</li>
+</ul>
+</div>
+<div class="prose-block"><h3>Bounded lists</h3>
+</div>
+<div class="prose-block"><p>We start with an abstraction of an incrementally growable list.  To
+get O(1) insertion at the end, we (currently) have to give an upper
+bound for the list's size.</p>
+</div>
+<div class="code-block"><span class="comment"># TODO Can we encapsulate this BoundedList type as a `data` and still
+</span></div>
+<div class="code-block"><span class="comment"># define in-place mutation operations on it?
+</span></div>
+<div class="code-block"><span class="keyword" id="span_105_1520">struct</span><span> </span><span id="span_105_1521">BoundedList</span><span class="symbol" id="span_105_1523">(</span><span id="span_105_1524">n</span><span class="symbol" id="span_105_1525">|</span><span id="span_105_1527">Ix</span><span class="symbol" id="span_105_1528">,</span><span> </span><span id="span_105_1529">a</span><span class="symbol" id="span_105_1530">|</span><span id="span_105_1532">Data</span><span class="symbol" id="span_105_1533">)</span><span> </span><span class="symbol" id="span_105_1534">=</span><span class="comment">
+  </span><span id="span_105_1535">lim</span><span> </span><span class="symbol" id="span_105_1536">:</span><span> </span><span id="span_105_1537">n</span><span class="comment">
+  </span><span id="span_105_1538">buf</span><span> </span><span class="symbol" id="span_105_1539">:</span><span> </span><span id="span_105_1540">n</span><span class="symbol" id="span_105_1541">=&gt;</span><span id="span_105_1543">a</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_107_1545">def</span><span> </span><span id="span_107_1546">unsafe_next_index</span><span class="symbol" id="span_107_1548">(</span><span id="span_107_1549">ix</span><span class="symbol" id="span_107_1550">:</span><span id="span_107_1552">n</span><span class="symbol" id="span_107_1553">)</span><span> </span><span class="symbol" id="span_107_1554">-&gt;</span><span> </span><span id="span_107_1555">n</span><span> </span><span class="keyword" id="span_107_1556">given</span><span> </span><span class="symbol" id="span_107_1558">(</span><span id="span_107_1559">n</span><span class="symbol" id="span_107_1560">|</span><span id="span_107_1562">Ix</span><span class="symbol" id="span_107_1563">)</span><span>  </span><span class="symbol" id="span_107_1564">=</span><span class="comment">
+  </span><span id="span_107_1567">unsafe_from_ordinal</span><span> </span><span class="symbol" id="span_107_1568">$</span><span> </span><span id="span_107_1570">ordinal</span><span> </span><span id="span_107_1572">ix</span><span> </span><span class="symbol" id="span_107_1573">+</span><span> </span><span class="literal" id="span_107_1575">1</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_109_1577">def</span><span> </span><span id="span_109_1578">empty_bounded_list</span><span class="symbol" id="span_109_1580">(</span><span id="span_109_1581">dummy_val</span><span class="symbol" id="span_109_1582">:</span><span> </span><span id="span_109_1584">a</span><span class="symbol" id="span_109_1585">)</span><span> </span><span class="symbol" id="span_109_1586">-&gt;</span><span> </span><span id="span_109_1587">BoundedList</span><span> </span><span id="span_109_1589">n</span><span> </span><span id="span_109_1591">a</span><span> </span><span class="keyword" id="span_109_1592">given</span><span> </span><span class="symbol" id="span_109_1594">(</span><span id="span_109_1595">a</span><span class="symbol" id="span_109_1596">|</span><span id="span_109_1598">Data</span><span class="symbol" id="span_109_1599">,</span><span> </span><span id="span_109_1600">n</span><span class="symbol" id="span_109_1601">|</span><span id="span_109_1603">Ix</span><span class="symbol" id="span_109_1604">)</span><span> </span><span class="symbol" id="span_109_1605">=</span><span class="comment">
+  </span><span id="span_109_1608">BoundedList</span><span class="symbol" id="span_109_1611">(</span><span id="span_109_1612">unsafe_from_ordinal</span><span> </span><span class="literal" id="span_109_1614">0</span><span class="symbol" id="span_109_1615">,</span><span> </span><span class="keyword" id="span_109_1617">for</span><span> </span><span class="symbol" id="span_109_1619">_</span><span class="symbol" id="span_109_1620">.</span><span> </span><span id="span_109_1621">dummy_val</span><span class="symbol" id="span_109_1622">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># The point of a `BoundedList` is O(1) push by in-place mutation
+</span></div>
+<div class="code-block"><span class="keyword" id="span_112_1624">def</span><span> </span><span id="span_112_1625">bd_push</span><span class="symbol" id="span_112_1627">(</span><span id="span_112_1628">ref</span><span class="symbol" id="span_112_1629">:</span><span> </span><span id="span_112_1631">Ref</span><span> </span><span id="span_112_1633">h</span><span> </span><span class="symbol" id="span_112_1636">(</span><span id="span_112_1637">BoundedList</span><span> </span><span id="span_112_1639">n</span><span> </span><span id="span_112_1641">a</span><span class="symbol" id="span_112_1642">)</span><span class="symbol" id="span_112_1643">,</span><span> </span><span id="span_112_1644">x</span><span class="symbol" id="span_112_1645">:</span><span> </span><span id="span_112_1647">a</span><span class="symbol" id="span_112_1648">)</span><span> </span><span class="symbol" id="span_112_1649">-&gt;</span><span> </span><span class="symbol" id="span_112_1651">{</span><span id="span_112_1652">State</span><span> </span><span id="span_112_1654">h</span><span class="symbol" id="span_112_1655">}</span><span> </span><span class="symbol" id="span_112_1657">(</span><span class="symbol" id="span_112_1658">)</span><span> </span><span class="keyword" id="span_112_1659">given</span><span> </span><span class="symbol" id="span_112_1661">(</span><span id="span_112_1662">h</span><span class="symbol" id="span_112_1663">,</span><span> </span><span id="span_112_1664">a</span><span class="symbol" id="span_112_1665">|</span><span id="span_112_1667">Data</span><span class="symbol" id="span_112_1668">,</span><span> </span><span id="span_112_1669">n</span><span class="symbol" id="span_112_1670">|</span><span id="span_112_1672">Ix</span><span class="symbol" id="span_112_1673">)</span><span> </span><span class="symbol" id="span_112_1674">=</span><span class="comment">
+  </span><span id="span_112_1677">sz</span><span> </span><span class="symbol" id="span_112_1678">=</span><span> </span><span id="span_112_1679">get</span><span> </span><span id="span_112_1681">ref</span><span class="symbol" id="span_112_1683">.</span><span id="span_112_1684">lim</span><span class="comment">
+  </span><span class="keyword" id="span_112_1687">if</span><span> </span><span id="span_112_1688">ordinal</span><span> </span><span id="span_112_1690">sz</span><span> </span><span class="symbol" id="span_112_1691">&lt;</span><span> </span><span id="span_112_1693">size</span><span> </span><span id="span_112_1695">n</span><span class="comment">
+    </span><span class="keyword" id="span_112_1696">then</span><span class="comment">
+      </span><span id="span_112_1699">ref</span><span class="symbol" id="span_112_1701">.</span><span id="span_112_1702">buf</span><span class="symbol" id="span_112_1703">!</span><span id="span_112_1705">sz</span><span> </span><span class="symbol" id="span_112_1706">:=</span><span> </span><span id="span_112_1708">x</span><span class="comment">
+      </span><span id="span_112_1710">ref</span><span class="symbol" id="span_112_1712">.</span><span id="span_112_1713">lim</span><span> </span><span class="symbol" id="span_112_1714">:=</span><span> </span><span id="span_112_1716">unsafe_next_index</span><span> </span><span id="span_112_1718">sz</span><span class="comment">
+    </span><span class="keyword" id="span_112_1719">else</span><span class="comment">
+      </span><span id="span_112_1722">todo</span><span class="comment"> # throw ()
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># Once we&#39;re done pushing, we can compact a `BoundedList` into a standard `List`.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_115_1724">def</span><span> </span><span id="span_115_1725">as_list</span><span class="symbol" id="span_115_1727">(</span><span id="span_115_1728">lst</span><span class="symbol" id="span_115_1729">:</span><span> </span><span id="span_115_1731">BoundedList</span><span> </span><span id="span_115_1733">n</span><span> </span><span id="span_115_1735">a</span><span class="symbol" id="span_115_1736">)</span><span> </span><span class="symbol" id="span_115_1737">-&gt;</span><span> </span><span id="span_115_1738">List</span><span> </span><span id="span_115_1740">a</span><span> </span><span class="keyword" id="span_115_1741">given</span><span> </span><span class="symbol" id="span_115_1743">(</span><span id="span_115_1744">a</span><span class="symbol" id="span_115_1745">|</span><span id="span_115_1747">Data</span><span class="symbol" id="span_115_1748">,</span><span> </span><span id="span_115_1749">n</span><span class="symbol" id="span_115_1750">|</span><span id="span_115_1752">Ix</span><span class="symbol" id="span_115_1753">)</span><span> </span><span class="symbol" id="span_115_1754">=</span><span class="comment">
+  </span><span id="span_115_1757">n_result</span><span> </span><span class="symbol" id="span_115_1758">=</span><span> </span><span id="span_115_1759">ordinal</span><span> </span><span id="span_115_1761">lst</span><span class="symbol" id="span_115_1763">.</span><span id="span_115_1764">lim</span><span class="comment">
+  </span><span id="span_115_1766">AsList</span><span> </span><span class="symbol" id="span_115_1769">_</span><span> </span><span class="symbol" id="span_115_1770">$</span><span> </span><span class="keyword" id="span_115_1773">for</span><span> </span><span id="span_115_1774">i</span><span class="symbol" id="span_115_1775">:</span><span class="symbol" id="span_115_1778">(</span><span id="span_115_1779">Fin</span><span> </span><span id="span_115_1781">n_result</span><span class="symbol" id="span_115_1782">)</span><span class="symbol" id="span_115_1783">.</span><span> </span><span id="span_115_1784">lst</span><span class="symbol" id="span_115_1786">.</span><span id="span_115_1787">buf</span><span class="symbol" id="span_115_1790">[</span><span id="span_115_1791">unsafe_from_ordinal</span><span> </span><span class="symbol" id="span_115_1792">$</span><span> </span><span id="span_115_1794">ordinal</span><span> </span><span id="span_115_1796">i</span><span class="symbol" id="span_115_1797">]</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><h3>Cell list</h3>
+</div>
+<div class="prose-block"><p>We define a single index for the whole grid.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_119_1799">def</span><span> </span><span id="span_119_1800">GridIx</span><span class="symbol" id="span_119_1802">(</span><span id="span_119_1803">dim</span><span class="symbol" id="span_119_1804">|</span><span id="span_119_1806">Ix</span><span class="symbol" id="span_119_1807">,</span><span> </span><span id="span_119_1808">grid_size</span><span class="symbol" id="span_119_1809">)</span><span> </span><span class="symbol" id="span_119_1810">-&gt;</span><span> </span><span id="span_119_1811">Type</span><span> </span><span class="symbol" id="span_119_1812">=</span><span> </span><span id="span_119_1813">dim</span><span> </span><span class="symbol" id="span_119_1814">=&gt;</span><span> </span><span class="symbol" id="span_119_1817">(</span><span id="span_119_1818">Fin</span><span> </span><span id="span_119_1820">grid_size</span><span class="symbol" id="span_119_1821">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>A cell list is now just a <code>BoundedList</code> of the (indices of) the atoms
+that appear in each cell in the grid.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_122_1823">def</span><span> </span><span id="span_122_1824">CellTable</span><span class="symbol" id="span_122_1826">(</span><span id="span_122_1827">dim</span><span class="symbol" id="span_122_1828">|</span><span id="span_122_1830">Ix</span><span class="symbol" id="span_122_1831">,</span><span> </span><span id="span_122_1832">grid_size</span><span class="symbol" id="span_122_1833">,</span><span> </span><span id="span_122_1834">bucket_size</span><span class="symbol" id="span_122_1835">,</span><span> </span><span id="span_122_1836">atom_ix</span><span class="symbol" id="span_122_1837">|</span><span id="span_122_1839">Data</span><span class="symbol" id="span_122_1840">)</span><span> </span><span class="symbol" id="span_122_1841">-&gt;</span><span> </span><span id="span_122_1842">Type</span><span> </span><span class="symbol" id="span_122_1843">=</span><span class="comment">
+  </span><span id="span_122_1846">GridIx</span><span> </span><span id="span_122_1848">dim</span><span> </span><span id="span_122_1850">grid_size</span><span> </span><span class="symbol" id="span_122_1851">=&gt;</span><span> </span><span id="span_122_1853">BoundedList</span><span> </span><span class="symbol" id="span_122_1856">(</span><span id="span_122_1857">Fin</span><span> </span><span id="span_122_1859">bucket_size</span><span class="symbol" id="span_122_1860">)</span><span> </span><span id="span_122_1862">atom_ix</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># Compute the cell an atom should go into.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_125_1864">def</span><span> </span><span id="span_125_1865">target_cell</span><span class="symbol" id="span_125_1867">(</span><span id="span_125_1868">cell_size</span><span class="symbol" id="span_125_1869">:</span><span> </span><span id="span_125_1871">Float</span><span class="symbol" id="span_125_1872">,</span><span> </span><span id="span_125_1873">atom</span><span class="symbol" id="span_125_1874">:</span><span> </span><span id="span_125_1876">Vec</span><span> </span><span id="span_125_1878">dim</span><span class="symbol" id="span_125_1879">)</span><span class="comment">
+  </span><span class="symbol" id="span_125_1880">-&gt;</span><span> </span><span id="span_125_1881">GridIx</span><span> </span><span id="span_125_1883">dim</span><span> </span><span id="span_125_1885">grid_size</span><span> </span><span class="keyword" id="span_125_1886">given</span><span> </span><span class="symbol" id="span_125_1888">(</span><span id="span_125_1889">dim</span><span class="symbol" id="span_125_1890">|</span><span id="span_125_1892">Ix</span><span class="symbol" id="span_125_1893">,</span><span> </span><span id="span_125_1894">grid_size</span><span class="symbol" id="span_125_1895">)</span><span> </span><span class="symbol" id="span_125_1896">=</span><span class="comment">
+  </span><span class="keyword" id="span_125_1900">for</span><span> </span><span id="span_125_1901">dim</span><span class="symbol" id="span_125_1902">.</span><span> </span><span id="span_125_1903">from_ordinal</span><span> </span><span class="symbol" id="span_125_1904">$</span><span> </span><span id="span_125_1906">f_to_n</span><span> </span><span class="symbol" id="span_125_1907">$</span><span> </span><span id="span_125_1909">atom</span><span class="symbol" id="span_125_1912">[</span><span id="span_125_1913">dim</span><span class="symbol" id="span_125_1914">]</span><span> </span><span class="symbol" id="span_125_1915">/</span><span> </span><span id="span_125_1917">cell_size</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># A traversal of an atom array together with target cell.
+</span></div>
+<div class="code-block"><span class="comment"># We abstract this because we will use it twice.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_129_1919">def</span><span> </span><span id="span_129_1920">traverse_cells</span><span class="symbol" id="span_129_1922">(</span><span class="comment">
+  </span><span id="span_129_1923">grid_size</span><span class="symbol" id="span_129_1924">,</span><span> </span><span id="span_129_1925">cell_size</span><span class="symbol" id="span_129_1926">,</span><span class="comment">
+  </span><span id="span_129_1927">atoms</span><span class="symbol" id="span_129_1928">:</span><span> </span><span id="span_129_1930">atom_ix</span><span> </span><span class="symbol" id="span_129_1931">=&gt;</span><span> </span><span id="span_129_1933">Vec</span><span> </span><span id="span_129_1935">dim</span><span class="symbol" id="span_129_1936">,</span><span class="comment">
+  </span><span id="span_129_1937">action</span><span class="symbol" id="span_129_1938">:</span><span> </span><span class="symbol" id="span_129_1941">(</span><span id="span_129_1942">atom_ix</span><span class="symbol" id="span_129_1943">,</span><span> </span><span id="span_129_1944">GridIx</span><span class="symbol" id="span_129_1947">(</span><span id="span_129_1948">dim</span><span class="symbol" id="span_129_1949">,</span><span> </span><span id="span_129_1950">grid_size</span><span class="symbol" id="span_129_1951">)</span><span class="symbol" id="span_129_1952">)</span><span> </span><span class="symbol" id="span_129_1953">-&gt;</span><span> </span><span class="symbol" id="span_129_1955">{</span><span class="symbol" id="span_129_1956">|</span><span id="span_129_1957">eff</span><span class="symbol" id="span_129_1958">}</span><span> </span><span class="symbol" id="span_129_1961">(</span><span class="symbol" id="span_129_1962">)</span><span class="comment">
+  </span><span class="symbol" id="span_129_1963">)</span><span> </span><span class="symbol" id="span_129_1964">-&gt;</span><span> </span><span class="symbol" id="span_129_1966">{</span><span class="symbol" id="span_129_1967">|</span><span id="span_129_1968">eff</span><span class="symbol" id="span_129_1969">}</span><span> </span><span class="symbol" id="span_129_1971">(</span><span class="symbol" id="span_129_1972">)</span><span> </span><span class="keyword" id="span_129_1973">given</span><span> </span><span class="symbol" id="span_129_1975">(</span><span id="span_129_1976">dim</span><span class="symbol" id="span_129_1977">|</span><span id="span_129_1979">Ix</span><span class="symbol" id="span_129_1980">,</span><span> </span><span id="span_129_1981">atom_ix</span><span class="symbol" id="span_129_1982">|</span><span id="span_129_1984">Ix</span><span class="symbol" id="span_129_1985">,</span><span> </span><span id="span_129_1986">eff</span><span class="symbol" id="span_129_1987">)</span><span> </span><span class="symbol" id="span_129_1988">=</span><span class="comment">
+  </span><span class="keyword" id="span_129_1992">for_</span><span> </span><span id="span_129_1993">ix</span><span class="symbol" id="span_129_1994">.</span><span class="comment">
+    </span><span id="span_129_1997">cell</span><span> </span><span class="symbol" id="span_129_1998">=</span><span> </span><span id="span_129_1999">target_cell</span><span> </span><span id="span_129_2001">cell_size</span><span> </span><span id="span_129_2003">atoms</span><span class="symbol" id="span_129_2006">[</span><span id="span_129_2007">ix</span><span class="symbol" id="span_129_2008">]</span><span class="comment">
+    </span><span id="span_129_2010">action</span><span> </span><span id="span_129_2012">ix</span><span> </span><span id="span_129_2014">cell</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Here is the actual cell table computation:</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_132_2016">def</span><span> </span><span id="span_132_2017">cell_table</span><span class="symbol" id="span_132_2019">(</span><span class="comment">
+  </span><span id="span_132_2020">grid_size</span><span class="symbol" id="span_132_2021">,</span><span> </span><span id="span_132_2022">bucket_size</span><span class="symbol" id="span_132_2023">,</span><span> </span><span id="span_132_2024">cell_size</span><span class="symbol" id="span_132_2025">,</span><span class="comment">
+  </span><span id="span_132_2026">atoms</span><span class="symbol" id="span_132_2027">:</span><span> </span><span id="span_132_2029">atom_ix</span><span> </span><span class="symbol" id="span_132_2030">=&gt;</span><span> </span><span id="span_132_2032">Vec</span><span> </span><span id="span_132_2034">dim</span><span class="comment">
+  </span><span class="symbol" id="span_132_2035">)</span><span> </span><span class="symbol" id="span_132_2036">-&gt;</span><span> </span><span id="span_132_2037">CellTable</span><span class="symbol" id="span_132_2040">(</span><span id="span_132_2041">dim</span><span class="symbol" id="span_132_2042">,</span><span> </span><span id="span_132_2043">grid_size</span><span class="symbol" id="span_132_2044">,</span><span> </span><span id="span_132_2045">bucket_size</span><span class="symbol" id="span_132_2046">,</span><span> </span><span id="span_132_2047">atom_ix</span><span class="symbol" id="span_132_2048">)</span><span class="comment">
+  </span><span class="keyword" id="span_132_2049">given</span><span> </span><span class="symbol" id="span_132_2051">(</span><span id="span_132_2052">dim</span><span class="symbol" id="span_132_2053">|</span><span id="span_132_2055">Ix</span><span class="symbol" id="span_132_2056">,</span><span> </span><span id="span_132_2057">atom_ix</span><span class="symbol" id="span_132_2058">|</span><span id="span_132_2060">Ix</span><span class="symbol" id="span_132_2061">)</span><span> </span><span class="symbol" id="span_132_2062">=</span><span class="comment">
+  </span><span id="span_132_2065">yield_state</span><span> </span><span class="symbol" id="span_132_2068">(</span><span class="keyword" id="span_132_2070">for</span><span> </span><span class="symbol" id="span_132_2072">_</span><span class="symbol" id="span_132_2073">.</span><span> </span><span id="span_132_2074">empty_bounded_list</span><span> </span><span class="symbol" id="span_132_2075">$</span><span> </span><span id="span_132_2077">unsafe_from_ordinal</span><span> </span><span class="literal" id="span_132_2079">0</span><span class="symbol" id="span_132_2080">)</span><span> </span><span class="symbol" id="span_132_2083">\</span><span id="span_132_2084">ref</span><span class="symbol" id="span_132_2085">.</span><span class="comment">
+    </span><span id="span_132_2088">traverse_cells</span><span> </span><span id="span_132_2090">grid_size</span><span> </span><span id="span_132_2092">cell_size</span><span> </span><span id="span_132_2094">atoms</span><span> </span><span class="symbol" id="span_132_2097">\</span><span id="span_132_2098">ix</span><span> </span><span id="span_132_2099">cell</span><span class="symbol" id="span_132_2100">.</span><span class="comment">
+      </span><span id="span_132_2103">bd_push</span><span> </span><span id="span_132_2105">ref</span><span class="symbol" id="span_132_2106">!</span><span id="span_132_2108">cell</span><span> </span><span id="span_132_2110">ix</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># This is a helper for computing the bucket size.  Right now we end
+</span></div>
+<div class="code-block"><span class="comment"># up traversing the input twice (once to compute a size and once to
+</span></div>
+<div class="code-block"><span class="comment"># actually build the cell table); this is working around limitations
+</span></div>
+<div class="code-block"><span class="comment"># in Dex&#39;s support for mutable lists of statically unknown length.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_138_2112">def</span><span> </span><span id="span_138_2113">cell_table_bucket_size</span><span class="symbol" id="span_138_2115">(</span><span class="comment">
+  </span><span id="span_138_2116">grid_size</span><span class="symbol" id="span_138_2117">,</span><span> </span><span id="span_138_2118">cell_size</span><span class="symbol" id="span_138_2119">,</span><span> </span><span id="span_138_2120">atoms</span><span class="symbol" id="span_138_2121">:</span><span> </span><span id="span_138_2123">atom_ix</span><span> </span><span class="symbol" id="span_138_2124">=&gt;</span><span> </span><span id="span_138_2126">Vec</span><span> </span><span id="span_138_2128">dim</span><span class="comment">
+  </span><span class="symbol" id="span_138_2129">)</span><span> </span><span class="symbol" id="span_138_2130">-&gt;</span><span> </span><span id="span_138_2131">Nat</span><span> </span><span class="keyword" id="span_138_2132">given</span><span> </span><span class="symbol" id="span_138_2134">(</span><span id="span_138_2135">dim</span><span class="symbol" id="span_138_2136">|</span><span id="span_138_2138">Ix</span><span class="symbol" id="span_138_2139">,</span><span> </span><span id="span_138_2140">atom_ix</span><span class="symbol" id="span_138_2141">|</span><span id="span_138_2143">Ix</span><span class="symbol" id="span_138_2144">)</span><span> </span><span class="symbol" id="span_138_2145">=</span><span class="comment">
+  # TODO Use yield_accum here
+  </span><span id="span_138_2148">bucket_sizes</span><span> </span><span class="symbol" id="span_138_2149">=</span><span> </span><span id="span_138_2150">yield_state</span><span> </span><span class="symbol" id="span_138_2153">(</span><span class="keyword" id="span_138_2155">for</span><span> </span><span class="symbol" id="span_138_2157">_</span><span class="symbol" id="span_138_2158">:</span><span class="symbol" id="span_138_2161">(</span><span id="span_138_2162">GridIx</span><span> </span><span id="span_138_2164">dim</span><span> </span><span id="span_138_2166">grid_size</span><span class="symbol" id="span_138_2167">)</span><span class="symbol" id="span_138_2168">.</span><span> </span><span class="literal" id="span_138_2169">0</span><span class="symbol" id="span_138_2170">)</span><span> </span><span class="symbol" id="span_138_2173">\</span><span id="span_138_2174">ref</span><span class="symbol" id="span_138_2175">.</span><span class="comment">
+    </span><span id="span_138_2178">traverse_cells</span><span> </span><span id="span_138_2180">grid_size</span><span> </span><span id="span_138_2182">cell_size</span><span> </span><span id="span_138_2184">atoms</span><span> </span><span class="symbol" id="span_138_2187">\</span><span id="span_138_2188">ix</span><span> </span><span id="span_138_2189">cell</span><span class="symbol" id="span_138_2190">.</span><span class="comment">
+      </span><span id="span_138_2193">ref</span><span class="symbol" id="span_138_2194">!</span><span id="span_138_2196">cell</span><span> </span><span class="symbol" id="span_138_2197">:=</span><span> </span><span id="span_138_2199">get</span><span> </span><span id="span_138_2201">ref</span><span class="symbol" id="span_138_2202">!</span><span id="span_138_2204">cell</span><span> </span><span class="symbol" id="span_138_2205">+</span><span> </span><span class="literal" id="span_138_2207">1</span><span class="comment">
+  </span><span id="span_138_2209">maximum</span><span> </span><span id="span_138_2211">bucket_sizes</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Let's test it out on our &quot;small&quot; system:</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_141_2213">def</span><span> </span><span id="span_141_2214">grid_params</span><span class="symbol" id="span_141_2216">(</span><span id="span_141_2217">L</span><span class="symbol" id="span_141_2218">,</span><span> </span><span id="span_141_2219">desired_cell_size</span><span class="symbol" id="span_141_2220">)</span><span> </span><span class="symbol" id="span_141_2221">=</span><span class="comment">
+  </span><span id="span_141_2224">cells_per_side</span><span> </span><span class="symbol" id="span_141_2225">=</span><span> </span><span id="span_141_2226">floor</span><span class="symbol" id="span_141_2229">(</span><span id="span_141_2230">L</span><span> </span><span class="symbol" id="span_141_2231">/</span><span> </span><span id="span_141_2233">desired_cell_size</span><span class="symbol" id="span_141_2234">)</span><span class="comment">
+  </span><span id="span_141_2236">cell_size</span><span> </span><span class="symbol" id="span_141_2237">=</span><span> </span><span id="span_141_2238">L</span><span> </span><span class="symbol" id="span_141_2239">/</span><span> </span><span id="span_141_2241">cells_per_side</span><span class="comment">
+  </span><span id="span_141_2243">grid_size</span><span> </span><span class="symbol" id="span_141_2244">=</span><span> </span><span id="span_141_2245">unsafe_i_to_n</span><span> </span><span class="symbol" id="span_141_2246">$</span><span> </span><span id="span_141_2248">f_to_i</span><span> </span><span id="span_141_2250">cells_per_side</span><span class="comment">
+  </span><span class="symbol" id="span_141_2253">(</span><span id="span_141_2254">cell_size</span><span class="symbol" id="span_141_2255">,</span><span> </span><span id="span_141_2256">grid_size</span><span class="symbol" id="span_141_2257">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_143_2259">desired_cell_size</span><span> </span><span class="symbol" id="span_143_2260">=</span><span> </span><span class="literal" id="span_143_2261">1.0</span><span class="comment"> # unit interaction range
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="symbol" id="span_145_2264">(</span><span id="span_145_2265">cell_size</span><span class="symbol" id="span_145_2266">,</span><span> </span><span id="span_145_2267">grid_size</span><span class="symbol" id="span_145_2268">)</span><span> </span><span class="symbol" id="span_145_2269">=</span><span> </span><span id="span_145_2270">grid_params</span><span> </span><span id="span_145_2272">L_small</span><span> </span><span id="span_145_2274">desired_cell_size</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_147_2276">bucket_size</span><span> </span><span class="symbol" id="span_147_2277">=</span><span> </span><span class="literal" id="span_147_2278">10</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block">%time
+tbl = cell_table grid_size bucket_size cell_size $ state_small&#39;.R
+&gt;
+&gt; Compile time: 128.647 ms
+&gt; Run time:     14.530 us
+
+</div><div class="err-result">367:6:
+    |
+367 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>We have a table of cells with atoms in them</p>
+</div>
+<div class="code-block"><span class="comment">:</span><span id="span_151_2279">t</span><span> </span><span id="span_151_2280">tbl</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>And here are the atoms in the 0th cell.</p>
+</div>
+<div class="code-block"><span id="span_154_2282">as_list</span><span> </span><span id="span_154_2284">tbl</span><span class="symbol" id="span_154_2287">[</span><span id="span_154_2288">unsafe_from_ordinal</span><span> </span><span class="literal" id="span_154_2290">0</span><span class="symbol" id="span_154_2291">]</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><h3>Now let's compute pairs of neighbors from our cell list</h3>
+<p>We'll specialize to two dimensions for now, but broadening to
+more is not difficult.</p>
+</div>
+<div class="code-block"><span id="span_157_2293">cell_neighbors_2d</span><span> </span><span class="symbol" id="span_157_2294">=</span><span> </span><span class="symbol" id="span_157_2296">[</span><span class="symbol" id="span_157_2298">[</span><span class="symbol" id="span_157_2299">-</span><span class="literal" id="span_157_2301">1</span><span class="symbol" id="span_157_2302">,</span><span> </span><span class="symbol" id="span_157_2303">-</span><span class="literal" id="span_157_2305">1</span><span class="symbol" id="span_157_2306">]</span><span class="symbol" id="span_157_2307">,</span><span> </span><span class="symbol" id="span_157_2309">[</span><span class="symbol" id="span_157_2310">-</span><span class="literal" id="span_157_2312">1</span><span class="symbol" id="span_157_2313">,</span><span> </span><span class="literal" id="span_157_2314">0</span><span class="symbol" id="span_157_2315">]</span><span class="symbol" id="span_157_2316">,</span><span> </span><span class="symbol" id="span_157_2318">[</span><span class="symbol" id="span_157_2319">-</span><span class="literal" id="span_157_2321">1</span><span class="symbol" id="span_157_2322">,</span><span> </span><span class="literal" id="span_157_2323">1</span><span class="symbol" id="span_157_2324">]</span><span class="symbol" id="span_157_2325">,</span><span> </span><span class="symbol" id="span_157_2327">[</span><span class="literal" id="span_157_2328">0</span><span class="symbol" id="span_157_2329">,</span><span> </span><span class="symbol" id="span_157_2330">-</span><span class="literal" id="span_157_2332">1</span><span class="symbol" id="span_157_2333">]</span><span class="symbol" id="span_157_2334">,</span><span class="comment">
+                     </span><span class="symbol" id="span_157_2336">[</span><span class="literal" id="span_157_2337">0</span><span class="symbol" id="span_157_2338">,</span><span> </span><span class="literal" id="span_157_2339">0</span><span class="symbol" id="span_157_2340">]</span><span class="symbol" id="span_157_2341">,</span><span> </span><span class="symbol" id="span_157_2343">[</span><span class="literal" id="span_157_2344">0</span><span class="symbol" id="span_157_2345">,</span><span> </span><span class="literal" id="span_157_2346">1</span><span class="symbol" id="span_157_2347">]</span><span class="symbol" id="span_157_2348">,</span><span> </span><span class="symbol" id="span_157_2350">[</span><span class="literal" id="span_157_2351">1</span><span class="symbol" id="span_157_2352">,</span><span> </span><span class="symbol" id="span_157_2353">-</span><span class="literal" id="span_157_2355">1</span><span class="symbol" id="span_157_2356">]</span><span class="symbol" id="span_157_2357">,</span><span> </span><span class="symbol" id="span_157_2359">[</span><span class="literal" id="span_157_2360">1</span><span class="symbol" id="span_157_2361">,</span><span> </span><span class="literal" id="span_157_2362">0</span><span class="symbol" id="span_157_2363">]</span><span class="symbol" id="span_157_2364">,</span><span> </span><span class="symbol" id="span_157_2366">[</span><span class="literal" id="span_157_2367">1</span><span class="symbol" id="span_157_2368">,</span><span> </span><span class="literal" id="span_157_2369">1</span><span class="symbol" id="span_157_2370">]</span><span class="symbol" id="span_157_2371">]</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">:</span><span id="span_159_2372">t</span><span> </span><span id="span_159_2373">cell_neighbors_2d</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># Toroidal index offsetting
+</span></div>
+<div class="code-block"><span class="keyword" id="span_162_2375">def</span><span> </span><span id="span_162_2376">torus_offset</span><span class="symbol" id="span_162_2378">(</span><span id="span_162_2379">ix</span><span class="symbol" id="span_162_2380">:</span><span> </span><span class="symbol" id="span_162_2383">(</span><span id="span_162_2384">Fin</span><span> </span><span id="span_162_2386">n</span><span class="symbol" id="span_162_2387">)</span><span class="symbol" id="span_162_2388">,</span><span> </span><span id="span_162_2389">offset</span><span class="symbol" id="span_162_2390">:</span><span> </span><span id="span_162_2392">Int</span><span class="symbol" id="span_162_2393">)</span><span> </span><span class="symbol" id="span_162_2394">-&gt;</span><span> </span><span class="symbol" id="span_162_2396">(</span><span id="span_162_2397">Fin</span><span> </span><span id="span_162_2399">n</span><span class="symbol" id="span_162_2400">)</span><span> </span><span class="keyword" id="span_162_2401">given</span><span> </span><span class="symbol" id="span_162_2403">(</span><span id="span_162_2404">n</span><span class="symbol" id="span_162_2405">)</span><span> </span><span class="symbol" id="span_162_2406">=</span><span class="comment">
+  </span><span id="span_162_2409">unsafe_from_ordinal</span><span> </span><span class="symbol" id="span_162_2410">$</span><span> </span><span id="span_162_2412">unsafe_i_to_n</span><span> </span><span class="symbol" id="span_162_2413">$</span><span class="comment">
+    </span><span id="span_162_2415">mod</span><span> </span><span class="symbol" id="span_162_2418">(</span><span id="span_162_2419">n_to_i</span><span> </span><span class="symbol" id="span_162_2422">(</span><span id="span_162_2423">ordinal</span><span> </span><span id="span_162_2425">ix</span><span class="symbol" id="span_162_2426">)</span><span> </span><span class="symbol" id="span_162_2427">+</span><span> </span><span id="span_162_2429">offset</span><span class="symbol" id="span_162_2430">)</span><span> </span><span class="symbol" id="span_162_2433">(</span><span id="span_162_2434">n_to_i</span><span> </span><span id="span_162_2436">n</span><span class="symbol" id="span_162_2437">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># A traversal of pairs of atoms from adjacent or equal cells in a
+</span></div>
+<div class="code-block"><span class="comment"># cell table.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_166_2439">def</span><span> </span><span id="span_166_2440">traverse_pairs</span><span class="symbol" id="span_166_2442">(</span><span class="comment">
+    </span><span id="span_166_2443">tbl</span><span class="symbol" id="span_166_2444">:</span><span> </span><span id="span_166_2446">CellTable</span><span class="symbol" id="span_166_2449">(</span><span id="span_166_2450">TwoDimensions</span><span class="symbol" id="span_166_2451">,</span><span> </span><span id="span_166_2452">grid_size</span><span class="symbol" id="span_166_2453">,</span><span> </span><span id="span_166_2454">bucket_size</span><span class="symbol" id="span_166_2455">,</span><span> </span><span id="span_166_2456">atom_ix</span><span class="symbol" id="span_166_2457">)</span><span class="symbol" id="span_166_2458">,</span><span class="comment">
+    </span><span id="span_166_2459">atoms</span><span class="symbol" id="span_166_2460">:</span><span> </span><span id="span_166_2462">atom_ix</span><span> </span><span class="symbol" id="span_166_2463">=&gt;</span><span> </span><span id="span_166_2465">Vec</span><span> </span><span id="span_166_2467">TwoDimensions</span><span class="symbol" id="span_166_2468">,</span><span class="comment">
+    </span><span id="span_166_2469">action</span><span class="symbol" id="span_166_2470">:</span><span> </span><span class="symbol" id="span_166_2473">(</span><span id="span_166_2474">atom_ix</span><span class="symbol" id="span_166_2475">,</span><span> </span><span id="span_166_2476">atom_ix</span><span class="symbol" id="span_166_2477">)</span><span> </span><span class="symbol" id="span_166_2478">-&gt;</span><span> </span><span class="symbol" id="span_166_2480">{</span><span class="symbol" id="span_166_2481">|</span><span id="span_166_2482">eff</span><span class="symbol" id="span_166_2483">}</span><span> </span><span class="symbol" id="span_166_2486">(</span><span class="symbol" id="span_166_2487">)</span><span class="comment">
+    </span><span class="symbol" id="span_166_2488">)</span><span> </span><span class="symbol" id="span_166_2489">-&gt;</span><span> </span><span class="symbol" id="span_166_2491">{</span><span class="symbol" id="span_166_2492">|</span><span id="span_166_2493">eff</span><span class="symbol" id="span_166_2494">}</span><span> </span><span class="symbol" id="span_166_2496">(</span><span class="symbol" id="span_166_2497">)</span><span> </span><span class="keyword" id="span_166_2498">given</span><span> </span><span class="symbol" id="span_166_2500">(</span><span id="span_166_2501">grid_size</span><span class="symbol" id="span_166_2502">,</span><span> </span><span id="span_166_2503">bucket_size</span><span class="symbol" id="span_166_2504">,</span><span> </span><span id="span_166_2505">atom_ix</span><span class="symbol" id="span_166_2506">|</span><span id="span_166_2508">Ix</span><span class="symbol" id="span_166_2509">,</span><span> </span><span id="span_166_2510">eff</span><span class="symbol" id="span_166_2511">)</span><span> </span><span class="symbol" id="span_166_2512">=</span><span class="comment">
+  </span><span class="keyword" id="span_166_2516">for_</span><span> </span><span id="span_166_2517">cell_ix</span><span> </span><span class="symbol" id="span_166_2518">:</span><span> </span><span class="symbol" id="span_166_2521">(</span><span id="span_166_2522">GridIx</span><span> </span><span id="span_166_2524">TwoDimensions</span><span> </span><span id="span_166_2526">grid_size</span><span class="symbol" id="span_166_2527">)</span><span class="symbol" id="span_166_2528">.</span><span class="comment">
+    </span><span class="keyword" id="span_166_2532">for_</span><span> </span><span id="span_166_2533">nb</span><span class="symbol" id="span_166_2534">.</span><span class="comment">
+      </span><span id="span_166_2537">displacement</span><span> </span><span class="symbol" id="span_166_2538">=</span><span> </span><span id="span_166_2539">cell_neighbors_2d</span><span class="symbol" id="span_166_2542">[</span><span id="span_166_2543">nb</span><span class="symbol" id="span_166_2544">]</span><span class="comment">
+      </span><span id="span_166_2546">neighbor_ix</span><span> </span><span class="symbol" id="span_166_2547">=</span><span> </span><span class="keyword" id="span_166_2549">for</span><span> </span><span id="span_166_2550">dim</span><span class="symbol" id="span_166_2551">.</span><span> </span><span id="span_166_2552">torus_offset</span><span> </span><span id="span_166_2554">cell_ix</span><span class="symbol" id="span_166_2557">[</span><span id="span_166_2558">dim</span><span class="symbol" id="span_166_2559">]</span><span> </span><span id="span_166_2561">displacement</span><span class="symbol" id="span_166_2564">[</span><span id="span_166_2565">dim</span><span class="symbol" id="span_166_2566">]</span><span class="comment">
+      </span><span id="span_166_2568">AsList</span><span class="symbol" id="span_166_2571">(</span><span id="span_166_2572">sz_atoms_1</span><span class="symbol" id="span_166_2573">,</span><span> </span><span id="span_166_2574">atoms_1</span><span class="symbol" id="span_166_2575">)</span><span> </span><span class="symbol" id="span_166_2576">=</span><span> </span><span id="span_166_2577">as_list</span><span> </span><span id="span_166_2579">tbl</span><span class="symbol" id="span_166_2582">[</span><span id="span_166_2583">cell_ix</span><span class="symbol" id="span_166_2584">]</span><span class="comment">
+      </span><span class="keyword" id="span_166_2587">for_</span><span> </span><span id="span_166_2588">atom1_ix</span><span> </span><span class="symbol" id="span_166_2589">:</span><span> </span><span class="symbol" id="span_166_2592">(</span><span id="span_166_2593">Fin</span><span> </span><span id="span_166_2595">sz_atoms_1</span><span class="symbol" id="span_166_2596">)</span><span class="symbol" id="span_166_2597">.</span><span class="comment">
+        </span><span id="span_166_2600">atom1</span><span> </span><span class="symbol" id="span_166_2601">=</span><span> </span><span id="span_166_2602">atoms_1</span><span class="symbol" id="span_166_2605">[</span><span id="span_166_2606">atom1_ix</span><span class="symbol" id="span_166_2607">]</span><span class="comment">
+        </span><span id="span_166_2609">AsList</span><span class="symbol" id="span_166_2612">(</span><span id="span_166_2613">sz_atoms_2</span><span class="symbol" id="span_166_2614">,</span><span> </span><span id="span_166_2615">atoms_2</span><span class="symbol" id="span_166_2616">)</span><span> </span><span class="symbol" id="span_166_2617">=</span><span> </span><span id="span_166_2618">as_list</span><span> </span><span id="span_166_2620">tbl</span><span class="symbol" id="span_166_2623">[</span><span id="span_166_2624">neighbor_ix</span><span class="symbol" id="span_166_2625">]</span><span class="comment">
+        </span><span class="keyword" id="span_166_2628">for_</span><span> </span><span id="span_166_2629">atom2_ix</span><span> </span><span class="symbol" id="span_166_2630">:</span><span> </span><span class="symbol" id="span_166_2633">(</span><span id="span_166_2634">Fin</span><span> </span><span id="span_166_2636">sz_atoms_2</span><span class="symbol" id="span_166_2637">)</span><span class="symbol" id="span_166_2638">.</span><span class="comment">
+          </span><span id="span_166_2641">atom2</span><span> </span><span class="symbol" id="span_166_2642">=</span><span> </span><span id="span_166_2643">atoms_2</span><span class="symbol" id="span_166_2646">[</span><span id="span_166_2647">atom2_ix</span><span class="symbol" id="span_166_2648">]</span><span class="comment">
+          </span><span id="span_166_2650">action</span><span> </span><span id="span_166_2652">atom1</span><span> </span><span id="span_166_2654">atom2</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>The neighbor list computation.  The point of the exercise is that
+this is not O(#atoms^2), but rather O(#cells) * 9 * O(#atoms per
+cell^2), because it only considers atoms from adjacent cells as
+potential neighbors.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_169_2656">def</span><span> </span><span id="span_169_2657">neighbor_list</span><span class="symbol" id="span_169_2659">(</span><span class="comment">
+    </span><span id="span_169_2660">neighbor_list_size</span><span class="symbol" id="span_169_2661">,</span><span class="comment">
+    </span><span id="span_169_2662">tbl</span><span class="symbol" id="span_169_2663">:</span><span> </span><span id="span_169_2665">CellTable</span><span class="symbol" id="span_169_2668">(</span><span id="span_169_2669">TwoDimensions</span><span class="symbol" id="span_169_2670">,</span><span> </span><span id="span_169_2671">grid_size</span><span class="symbol" id="span_169_2672">,</span><span> </span><span id="span_169_2673">bucket_size</span><span class="symbol" id="span_169_2674">,</span><span> </span><span id="span_169_2675">atom_ix</span><span class="symbol" id="span_169_2676">)</span><span class="symbol" id="span_169_2677">,</span><span class="comment">
+    </span><span id="span_169_2678">is_neighbor</span><span class="symbol" id="span_169_2679">:</span><span> </span><span class="symbol" id="span_169_2682">(</span><span id="span_169_2683">atom_ix</span><span class="symbol" id="span_169_2684">,</span><span> </span><span id="span_169_2685">atom_ix</span><span class="symbol" id="span_169_2686">)</span><span> </span><span class="symbol" id="span_169_2687">-&gt;</span><span> </span><span id="span_169_2689">Bool</span><span class="symbol" id="span_169_2690">,</span><span class="comment">
+    </span><span id="span_169_2691">atoms</span><span class="symbol" id="span_169_2692">:</span><span> </span><span id="span_169_2694">atom_ix</span><span> </span><span class="symbol" id="span_169_2695">=&gt;</span><span> </span><span id="span_169_2697">Vec</span><span> </span><span id="span_169_2699">TwoDimensions</span><span class="comment">
+    </span><span class="symbol" id="span_169_2700">)</span><span> </span><span class="symbol" id="span_169_2701">-&gt;</span><span> </span><span id="span_169_2702">BoundedList</span><span class="symbol" id="span_169_2705">(</span><span id="span_169_2706">Fin</span><span> </span><span id="span_169_2708">neighbor_list_size</span><span class="symbol" id="span_169_2709">,</span><span> </span><span class="symbol" id="span_169_2711">(</span><span id="span_169_2712">atom_ix</span><span class="symbol" id="span_169_2713">,</span><span> </span><span id="span_169_2714">atom_ix</span><span class="symbol" id="span_169_2715">)</span><span class="symbol" id="span_169_2716">)</span><span class="comment">
+    </span><span class="keyword" id="span_169_2717">given</span><span> </span><span class="symbol" id="span_169_2719">(</span><span id="span_169_2720">grid_size</span><span class="symbol" id="span_169_2721">,</span><span> </span><span id="span_169_2722">bucket_size</span><span class="symbol" id="span_169_2723">,</span><span> </span><span id="span_169_2724">atom_ix</span><span class="symbol" id="span_169_2725">|</span><span id="span_169_2727">Ix</span><span class="symbol" id="span_169_2728">)</span><span> </span><span class="symbol" id="span_169_2729">=</span><span class="comment">
+  </span><span id="span_169_2732">yield_state</span><span class="symbol" id="span_169_2735">(</span><span id="span_169_2736">empty_bounded_list</span><span class="symbol" id="span_169_2739">(</span><span class="symbol" id="span_169_2741">(</span><span id="span_169_2742">from_ordinal</span><span> </span><span class="literal" id="span_169_2744">0</span><span class="symbol" id="span_169_2745">,</span><span> </span><span id="span_169_2746">from_ordinal</span><span> </span><span class="literal" id="span_169_2748">0</span><span class="symbol" id="span_169_2749">)</span><span class="symbol" id="span_169_2750">)</span><span class="symbol" id="span_169_2751">)</span><span> </span><span class="symbol" id="span_169_2754">\</span><span id="span_169_2755">ref</span><span class="symbol" id="span_169_2756">.</span><span class="comment">
+    </span><span id="span_169_2759">traverse_pairs</span><span class="symbol" id="span_169_2762">(</span><span id="span_169_2763">tbl</span><span class="symbol" id="span_169_2764">,</span><span> </span><span id="span_169_2765">atoms</span><span class="symbol" id="span_169_2766">)</span><span> </span><span class="symbol" id="span_169_2769">\</span><span id="span_169_2770">atom1</span><span> </span><span id="span_169_2771">atom2</span><span class="symbol" id="span_169_2772">.</span><span class="comment">
+      </span><span class="keyword" id="span_169_2776">if</span><span> </span><span id="span_169_2777">is_neighbor</span><span class="symbol" id="span_169_2780">(</span><span id="span_169_2781">atom1</span><span class="symbol" id="span_169_2782">,</span><span> </span><span id="span_169_2783">atom2</span><span class="symbol" id="span_169_2784">)</span><span class="comment">
+        </span><span class="keyword" id="span_169_2785">then</span><span> </span><span id="span_169_2786">bd_push</span><span class="symbol" id="span_169_2789">(</span><span id="span_169_2790">ref</span><span class="symbol" id="span_169_2791">,</span><span> </span><span class="symbol" id="span_169_2793">(</span><span id="span_169_2794">atom1</span><span class="symbol" id="span_169_2795">,</span><span> </span><span id="span_169_2796">atom2</span><span class="symbol" id="span_169_2797">)</span><span class="symbol" id="span_169_2798">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># Also a helper to pre-compute how large a buffer to allocate for the
+</span></div>
+<div class="code-block"><span class="comment"># neighbor list, by traversing the input an extra time.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_173_2800">def</span><span> </span><span id="span_173_2801">count_neighbor_list_size</span><span class="symbol" id="span_173_2803">(</span><span class="comment">
+    </span><span id="span_173_2804">tbl</span><span class="symbol" id="span_173_2805">:</span><span> </span><span id="span_173_2807">CellTable</span><span class="symbol" id="span_173_2810">(</span><span id="span_173_2811">TwoDimensions</span><span class="symbol" id="span_173_2812">,</span><span> </span><span id="span_173_2813">grid_size</span><span class="symbol" id="span_173_2814">,</span><span> </span><span id="span_173_2815">bucket_size</span><span class="symbol" id="span_173_2816">,</span><span> </span><span id="span_173_2817">atom_ix</span><span class="symbol" id="span_173_2818">)</span><span class="symbol" id="span_173_2819">,</span><span class="comment">
+    </span><span id="span_173_2820">is_neighbor</span><span class="symbol" id="span_173_2821">:</span><span> </span><span class="symbol" id="span_173_2824">(</span><span id="span_173_2825">atom_ix</span><span class="symbol" id="span_173_2826">,</span><span> </span><span id="span_173_2827">atom_ix</span><span class="symbol" id="span_173_2828">)</span><span> </span><span class="symbol" id="span_173_2829">-&gt;</span><span> </span><span id="span_173_2831">Bool</span><span class="symbol" id="span_173_2832">,</span><span class="comment">
+    </span><span id="span_173_2833">atoms</span><span class="symbol" id="span_173_2834">:</span><span> </span><span id="span_173_2836">atom_ix</span><span> </span><span class="symbol" id="span_173_2837">=&gt;</span><span> </span><span id="span_173_2839">Vec</span><span> </span><span id="span_173_2841">TwoDimensions</span><span class="comment">
+    </span><span class="symbol" id="span_173_2842">)</span><span> </span><span class="symbol" id="span_173_2843">-&gt;</span><span> </span><span id="span_173_2844">Nat</span><span> </span><span class="keyword" id="span_173_2845">given</span><span> </span><span class="symbol" id="span_173_2847">(</span><span id="span_173_2848">grid_size</span><span class="symbol" id="span_173_2849">,</span><span> </span><span id="span_173_2850">bucket_size</span><span class="symbol" id="span_173_2851">,</span><span> </span><span id="span_173_2852">atom_ix</span><span class="symbol" id="span_173_2853">|</span><span id="span_173_2855">Ix</span><span class="symbol" id="span_173_2856">)</span><span> </span><span class="symbol" id="span_173_2857">=</span><span class="comment">
+  </span><span id="span_173_2860">yield_accum</span><span> </span><span class="symbol" id="span_173_2863">(</span><span id="span_173_2864">AddMonoid</span><span> </span><span id="span_173_2866">Nat</span><span class="symbol" id="span_173_2867">)</span><span> </span><span class="symbol" id="span_173_2870">\</span><span id="span_173_2871">ref</span><span class="symbol" id="span_173_2872">.</span><span class="comment">
+    </span><span id="span_173_2875">traverse_pairs</span><span> </span><span id="span_173_2877">tbl</span><span> </span><span id="span_173_2879">atoms</span><span> </span><span class="symbol" id="span_173_2882">(</span><span class="symbol" id="span_173_2884">\</span><span id="span_173_2885">atom1</span><span> </span><span id="span_173_2886">atom2</span><span class="symbol" id="span_173_2887">.</span><span class="comment">
+      </span><span class="keyword" id="span_173_2891">if</span><span> </span><span id="span_173_2892">is_neighbor</span><span> </span><span id="span_173_2894">atom1</span><span> </span><span id="span_173_2896">atom2</span><span class="comment">
+        </span><span class="keyword" id="span_173_2897">then</span><span> </span><span id="span_173_2898">ref</span><span> </span><span class="symbol" id="span_173_2899">+=</span><span> </span><span class="literal" id="span_173_2901">1</span><span class="symbol" id="span_173_2902">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_175_2904">def</span><span> </span><span id="span_175_2905">periodic_near</span><span class="symbol" id="span_175_2907">(</span><span class="comment">
+    </span><span id="span_175_2908">desired_cell_size</span><span class="symbol" id="span_175_2909">,</span><span class="comment">
+    </span><span id="span_175_2910">L</span><span class="symbol" id="span_175_2911">,</span><span class="comment">
+    </span><span id="span_175_2912">atoms</span><span class="symbol" id="span_175_2913">:</span><span> </span><span id="span_175_2915">atom_ix</span><span> </span><span class="symbol" id="span_175_2916">=&gt;</span><span> </span><span id="span_175_2918">Vec</span><span> </span><span id="span_175_2920">TwoDimensions</span><span class="comment">
+    </span><span class="symbol" id="span_175_2921">)</span><span> </span><span class="symbol" id="span_175_2922">-&gt;</span><span> </span><span class="symbol" id="span_175_2924">(</span><span id="span_175_2925">atom_ix</span><span class="symbol" id="span_175_2926">,</span><span> </span><span id="span_175_2927">atom_ix</span><span class="symbol" id="span_175_2928">)</span><span> </span><span class="symbol" id="span_175_2929">-&gt;</span><span> </span><span id="span_175_2931">Bool</span><span> </span><span class="keyword" id="span_175_2932">given</span><span> </span><span class="symbol" id="span_175_2934">(</span><span id="span_175_2935">atom_ix</span><span class="symbol" id="span_175_2936">|</span><span id="span_175_2938">Ix</span><span class="symbol" id="span_175_2939">)</span><span> </span><span class="symbol" id="span_175_2940">=</span><span> </span><span class="symbol" id="span_175_2942">\</span><span id="span_175_2943">atom1</span><span> </span><span id="span_175_2944">atom2</span><span class="symbol" id="span_175_2945">.</span><span class="comment">
+  </span><span id="span_175_2948">dist</span><span> </span><span class="symbol" id="span_175_2949">=</span><span> </span><span id="span_175_2950">norm</span><span> </span><span class="symbol" id="span_175_2951">$</span><span> </span><span id="span_175_2953">periodic_displacement</span><span class="symbol" id="span_175_2956">(</span><span id="span_175_2957">L</span><span class="symbol" id="span_175_2958">)</span><span class="symbol" id="span_175_2961">(</span><span id="span_175_2962">atoms</span><span class="symbol" id="span_175_2965">[</span><span id="span_175_2966">atom1</span><span class="symbol" id="span_175_2967">]</span><span class="symbol" id="span_175_2968">,</span><span> </span><span id="span_175_2969">atoms</span><span class="symbol" id="span_175_2972">[</span><span id="span_175_2973">atom2</span><span class="symbol" id="span_175_2974">]</span><span class="symbol" id="span_175_2975">)</span><span class="comment">
+  </span><span id="span_175_2977">dist</span><span> </span><span class="symbol" id="span_175_2978">&lt;</span><span> </span><span id="span_175_2980">desired_cell_size</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Let's test this one out on our &quot;small&quot; system.</p>
+</div>
+<div class="code-block">%time
+res = (neighbor_list 4000 tbl
+  (periodic_near 1.0 L_small $ state_small&#39;.R) $ state_small&#39;.R)
+&gt;
+&gt; Compile time: 104.015 ms
+&gt; Run time:     134.844 us
+
+</div><div class="err-result">456:6:
+    |
+456 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>In that configuration, we find this many pairs of neighbors:</p>
+</div>
+<div class="code-block"><span id="span_180_2982">AsList</span><span class="symbol" id="span_180_2985">(</span><span id="span_180_2986">k</span><span class="symbol" id="span_180_2987">,</span><span> </span><span class="symbol" id="span_180_2989">_</span><span class="symbol" id="span_180_2990">)</span><span> </span><span class="symbol" id="span_180_2991">=</span><span> </span><span id="span_180_2992">as_list</span><span> </span><span id="span_180_2994">res</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_181_2996">k</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Now that we have the concept of neighbor lists, we cen define a
+variant of <code>pair_energy</code> that only considers atoms that the neighbor
+list says are close.</p>
+</div>
+<div class="code-block"><span class="keyword" id="span_184_2998">def</span><span> </span><span id="span_184_2999">pair_energy_nl</span><span class="symbol" id="span_184_3001">(</span><span class="comment">
+  </span><span id="span_184_3002">energy</span><span class="symbol" id="span_184_3003">:</span><span> </span><span class="symbol" id="span_184_3006">(</span><span id="span_184_3007">Float</span><span class="symbol" id="span_184_3008">)</span><span> </span><span class="symbol" id="span_184_3009">-&gt;</span><span> </span><span id="span_184_3011">Float</span><span class="symbol" id="span_184_3012">,</span><span class="comment">
+  </span><span id="span_184_3013">displacement</span><span class="symbol" id="span_184_3014">:</span><span> </span><span id="span_184_3016">Displacement</span><span> </span><span id="span_184_3018">dim</span><span class="symbol" id="span_184_3019">,</span><span class="comment">
+  </span><span id="span_184_3020">r</span><span class="symbol" id="span_184_3021">:</span><span> </span><span id="span_184_3023">n</span><span class="symbol" id="span_184_3024">=&gt;</span><span id="span_184_3026">Vec</span><span> </span><span id="span_184_3028">dim</span><span class="symbol" id="span_184_3029">,</span><span class="comment">
+  </span><span id="span_184_3030">neighbors</span><span class="symbol" id="span_184_3031">:</span><span> </span><span id="span_184_3033">List</span><span> </span><span class="symbol" id="span_184_3036">(</span><span id="span_184_3037">n</span><span class="symbol" id="span_184_3038">,</span><span> </span><span id="span_184_3039">n</span><span class="symbol" id="span_184_3040">)</span><span class="comment">
+  </span><span class="symbol" id="span_184_3041">)</span><span> </span><span class="symbol" id="span_184_3042">-&gt;</span><span> </span><span id="span_184_3043">Float</span><span> </span><span class="keyword" id="span_184_3044">given</span><span> </span><span class="symbol" id="span_184_3046">(</span><span id="span_184_3047">dim</span><span class="symbol" id="span_184_3048">|</span><span id="span_184_3050">Ix</span><span class="symbol" id="span_184_3051">,</span><span> </span><span id="span_184_3052">n</span><span class="symbol" id="span_184_3053">|</span><span id="span_184_3055">Ix</span><span class="symbol" id="span_184_3056">)</span><span> </span><span class="symbol" id="span_184_3057">=</span><span class="comment">
+  </span><span id="span_184_3060">AsList</span><span class="symbol" id="span_184_3063">(</span><span id="span_184_3064">k</span><span class="symbol" id="span_184_3065">,</span><span> </span><span id="span_184_3066">nbrs</span><span class="symbol" id="span_184_3067">)</span><span> </span><span class="symbol" id="span_184_3068">=</span><span> </span><span id="span_184_3069">neighbors</span><span class="comment">
+  </span><span id="span_184_3071">sum</span><span> </span><span class="keyword" id="span_184_3074">for</span><span> </span><span id="span_184_3075">i</span><span class="symbol" id="span_184_3076">.</span><span class="comment">
+    </span><span class="symbol" id="span_184_3080">(</span><span id="span_184_3081">a1ix</span><span class="symbol" id="span_184_3082">,</span><span> </span><span id="span_184_3083">a2ix</span><span class="symbol" id="span_184_3084">)</span><span> </span><span class="symbol" id="span_184_3085">=</span><span> </span><span id="span_184_3086">nbrs</span><span class="symbol" id="span_184_3089">[</span><span id="span_184_3090">i</span><span class="symbol" id="span_184_3091">]</span><span class="comment">
+    </span><span class="keyword" id="span_184_3094">case</span><span> </span><span class="symbol" id="span_184_3096">(</span><span id="span_184_3097">ordinal</span><span> </span><span id="span_184_3099">a1ix</span><span class="symbol" id="span_184_3100">)</span><span> </span><span class="symbol" id="span_184_3101">&lt;</span><span> </span><span class="symbol" id="span_184_3104">(</span><span id="span_184_3105">ordinal</span><span> </span><span id="span_184_3107">a2ix</span><span class="symbol" id="span_184_3108">)</span><span> </span><span class="keyword" id="span_184_3109">of</span><span class="comment">
+      </span><span id="span_184_3110">True</span><span>  </span><span class="symbol" id="span_184_3111">-&gt;</span><span> </span><span id="span_184_3112">energy</span><span> </span><span class="symbol" id="span_184_3113">$</span><span> </span><span id="span_184_3115">norm</span><span> </span><span class="symbol" id="span_184_3116">$</span><span> </span><span id="span_184_3118">displacement</span><span> </span><span id="span_184_3120">r</span><span class="symbol" id="span_184_3123">[</span><span id="span_184_3124">a1ix</span><span class="symbol" id="span_184_3125">]</span><span> </span><span id="span_184_3127">r</span><span class="symbol" id="span_184_3130">[</span><span id="span_184_3131">a2ix</span><span class="symbol" id="span_184_3132">]</span><span class="comment">
+      </span><span id="span_184_3133">False</span><span> </span><span class="symbol" id="span_184_3134">-&gt;</span><span> </span><span class="literal" id="span_184_3135">0.0</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="keyword" id="span_186_3137">def</span><span> </span><span id="span_186_3138">energy_nl</span><span class="symbol" id="span_186_3140">(</span><span class="comment">
+    </span><span id="span_186_3141">L</span><span class="symbol" id="span_186_3142">,</span><span class="comment">
+    </span><span id="span_186_3143">neighbors</span><span class="symbol" id="span_186_3144">:</span><span> </span><span id="span_186_3146">List</span><span> </span><span class="symbol" id="span_186_3149">(</span><span id="span_186_3150">n</span><span class="symbol" id="span_186_3151">,</span><span> </span><span id="span_186_3152">n</span><span class="symbol" id="span_186_3153">)</span><span class="comment">
+    </span><span class="symbol" id="span_186_3154">)</span><span> </span><span class="symbol" id="span_186_3155">-&gt;</span><span> </span><span class="symbol" id="span_186_3157">(</span><span id="span_186_3158">n</span><span class="symbol" id="span_186_3159">=&gt;</span><span id="span_186_3161">d</span><span class="symbol" id="span_186_3162">=&gt;</span><span id="span_186_3164">Float</span><span class="symbol" id="span_186_3165">)</span><span> </span><span class="symbol" id="span_186_3166">-&gt;</span><span> </span><span id="span_186_3168">Float</span><span> </span><span class="keyword" id="span_186_3169">given</span><span> </span><span class="symbol" id="span_186_3171">(</span><span id="span_186_3172">d</span><span class="symbol" id="span_186_3173">|</span><span id="span_186_3175">Ix</span><span class="symbol" id="span_186_3176">,</span><span> </span><span id="span_186_3177">n</span><span class="symbol" id="span_186_3178">|</span><span id="span_186_3180">Ix</span><span class="symbol" id="span_186_3181">)</span><span> </span><span class="symbol" id="span_186_3182">=</span><span> </span><span class="symbol" id="span_186_3184">\</span><span id="span_186_3185">pos</span><span class="symbol" id="span_186_3186">.</span><span class="comment">
+  </span><span id="span_186_3189">pair_energy_nl</span><span> </span><span class="symbol" id="span_186_3192">(</span><span id="span_186_3193">harmonic_soft_sphere</span><span> </span><span class="literal" id="span_186_3195">1.0</span><span class="symbol" id="span_186_3196">)</span><span> </span><span class="symbol" id="span_186_3199">(</span><span id="span_186_3200">periodic_displacement</span><span> </span><span id="span_186_3202">L</span><span class="symbol" id="span_186_3203">)</span><span> </span><span id="span_186_3205">pos</span><span> </span><span id="span_186_3207">neighbors</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>And here's the check that it computes near-identical results to our
+original, fully pairwise energy function.</p>
+</div>
+<div class="code-block"><span id="span_189_3209">energy_nl</span><span class="symbol" id="span_189_3212">(</span><span id="span_189_3213">L_small</span><span class="symbol" id="span_189_3214">,</span><span> </span><span id="span_189_3215">as_list</span><span> </span><span id="span_189_3217">res</span><span class="symbol" id="span_189_3218">)</span><span class="symbol" id="span_189_3221">(</span><span id="span_189_3222">state_small&#39;</span><span class="symbol" id="span_189_3224">.</span><span id="span_189_3225">R</span><span class="symbol" id="span_189_3226">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_191_3228">energy</span><span> </span><span class="symbol" id="span_191_3231">(</span><span id="span_191_3232">state_small&#39;</span><span class="symbol" id="span_191_3234">.</span><span id="span_191_3235">R</span><span class="symbol" id="span_191_3236">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># Package the above up into a function that just computes the
+</span></div>
+<div class="code-block"><span class="comment"># neighbor list from an array of atoms.
+</span></div>
+<div class="code-block"><span class="keyword" id="span_195_3238">def</span><span> </span><span id="span_195_3239">just_neighbor_list</span><span class="symbol" id="span_195_3241">(</span><span class="comment">
+    </span><span id="span_195_3242">desired_cell_size</span><span class="symbol" id="span_195_3243">,</span><span class="comment">
+    </span><span id="span_195_3244">L</span><span class="symbol" id="span_195_3245">,</span><span class="comment">
+    </span><span id="span_195_3246">atoms</span><span class="symbol" id="span_195_3247">:</span><span id="span_195_3249">n</span><span class="symbol" id="span_195_3250">=&gt;</span><span class="symbol" id="span_195_3253">(</span><span id="span_195_3254">Fin</span><span> </span><span class="literal" id="span_195_3256">2</span><span class="symbol" id="span_195_3257">)</span><span class="symbol" id="span_195_3258">=&gt;</span><span id="span_195_3260">Float</span><span class="comment">
+    </span><span class="symbol" id="span_195_3261">)</span><span> </span><span class="symbol" id="span_195_3262">-&gt;</span><span> </span><span class="symbol" id="span_195_3264">(</span><span id="span_195_3265">List</span><span> </span><span class="symbol" id="span_195_3268">(</span><span id="span_195_3269">n</span><span class="symbol" id="span_195_3270">,</span><span> </span><span id="span_195_3271">n</span><span class="symbol" id="span_195_3272">)</span><span class="symbol" id="span_195_3273">)</span><span> </span><span class="keyword" id="span_195_3274">given</span><span> </span><span class="symbol" id="span_195_3276">(</span><span id="span_195_3277">n</span><span class="symbol" id="span_195_3278">|</span><span id="span_195_3280">Ix</span><span class="symbol" id="span_195_3281">)</span><span> </span><span class="symbol" id="span_195_3282">=</span><span class="comment">
+  </span><span class="symbol" id="span_195_3286">(</span><span id="span_195_3287">cell_size</span><span class="symbol" id="span_195_3288">,</span><span> </span><span id="span_195_3289">grid_size</span><span class="symbol" id="span_195_3290">)</span><span> </span><span class="symbol" id="span_195_3291">=</span><span> </span><span id="span_195_3292">grid_params</span><span> </span><span id="span_195_3294">L</span><span> </span><span id="span_195_3296">desired_cell_size</span><span class="comment">
+  </span><span id="span_195_3298">bucket_size</span><span> </span><span class="symbol" id="span_195_3299">=</span><span> </span><span id="span_195_3300">cell_table_bucket_size</span><span> </span><span id="span_195_3302">grid_size</span><span> </span><span id="span_195_3304">cell_size</span><span> </span><span id="span_195_3306">atoms</span><span class="comment">
+  </span><span id="span_195_3308">tbl</span><span> </span><span class="symbol" id="span_195_3309">=</span><span> </span><span id="span_195_3310">cell_table</span><span> </span><span id="span_195_3312">grid_size</span><span> </span><span id="span_195_3314">bucket_size</span><span> </span><span id="span_195_3316">cell_size</span><span> </span><span id="span_195_3318">atoms</span><span class="comment">
+  </span><span id="span_195_3320">is_neighbor</span><span> </span><span class="symbol" id="span_195_3321">=</span><span> </span><span id="span_195_3322">periodic_near</span><span> </span><span id="span_195_3324">desired_cell_size</span><span> </span><span id="span_195_3326">L</span><span> </span><span id="span_195_3328">atoms</span><span class="comment">
+  </span><span id="span_195_3330">neighbor_list_sz</span><span> </span><span class="symbol" id="span_195_3331">=</span><span> </span><span id="span_195_3332">count_neighbor_list_size</span><span> </span><span id="span_195_3334">tbl</span><span> </span><span id="span_195_3336">is_neighbor</span><span> </span><span id="span_195_3338">atoms</span><span class="comment">
+  </span><span id="span_195_3340">res</span><span> </span><span class="symbol" id="span_195_3341">=</span><span> </span><span id="span_195_3342">neighbor_list</span><span> </span><span id="span_195_3344">neighbor_list_sz</span><span> </span><span id="span_195_3346">tbl</span><span> </span><span id="span_195_3348">is_neighbor</span><span> </span><span id="span_195_3350">atoms</span><span class="comment">
+  </span><span id="span_195_3352">as_list</span><span> </span><span id="span_195_3354">res</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>The neighbor list energy function works as an argument to our FIRE
+Descent algorithm (provided the neighbor list uses the same atoms).</p>
+</div>
+<div class="code-block"><span id="span_198_3356">state_nl</span><span> </span><span class="symbol" id="span_198_3357">=</span><span class="comment">
+  </span><span id="span_198_3360">energy_func</span><span> </span><span class="symbol" id="span_198_3361">=</span><span> </span><span class="symbol" id="span_198_3363">(</span><span id="span_198_3364">energy_nl</span><span> </span><span id="span_198_3366">L_small</span><span> </span><span class="symbol" id="span_198_3367">$</span><span> </span><span id="span_198_3369">just_neighbor_list</span><span> </span><span class="literal" id="span_198_3371">1.0</span><span> </span><span id="span_198_3373">L_small</span><span> </span><span id="span_198_3375">R_init_small</span><span class="symbol" id="span_198_3376">)</span><span class="comment">
+  </span><span id="span_198_3378">fire_descent_init</span><span> </span><span class="literal" id="span_198_3380">0.1</span><span> </span><span class="literal" id="span_198_3382">0.1</span><span> </span><span id="span_198_3384">energy_func</span><span> </span><span id="span_198_3386">R_init_small</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_200_3388">energy</span><span> </span><span id="span_200_3390">R_init_small</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_201_3392">energy</span><span> </span><span class="symbol" id="span_201_3393">$</span><span> </span><span id="span_201_3395">fire_descent_step</span><span class="symbol" id="span_201_3398">(</span><span id="span_201_3399">free_shift</span><span class="symbol" id="span_201_3400">,</span><span> </span><span id="span_201_3401">energy</span><span class="symbol" id="span_201_3402">,</span><span> </span><span id="span_201_3403">state_small</span><span class="symbol" id="span_201_3404">)</span><span class="symbol" id="span_201_3406">.</span><span id="span_201_3407">R</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment"># A helper for short-circuiting `any` computation
+</span></div>
+<div class="code-block"><span class="keyword" id="span_204_3409">def</span><span> </span><span id="span_204_3410">fast_any</span><span class="symbol" id="span_204_3412">(</span><span id="span_204_3413">f</span><span class="symbol" id="span_204_3414">:</span><span> </span><span class="symbol" id="span_204_3417">(</span><span id="span_204_3418">n</span><span class="symbol" id="span_204_3419">)</span><span> </span><span class="symbol" id="span_204_3420">-&gt;</span><span> </span><span class="symbol" id="span_204_3422">{</span><span class="symbol" id="span_204_3423">|</span><span id="span_204_3424">eff</span><span class="symbol" id="span_204_3425">}</span><span> </span><span id="span_204_3427">Bool</span><span class="symbol" id="span_204_3428">)</span><span> </span><span class="symbol" id="span_204_3429">-&gt;</span><span> </span><span class="symbol" id="span_204_3431">{</span><span class="symbol" id="span_204_3432">|</span><span id="span_204_3433">eff</span><span class="symbol" id="span_204_3434">}</span><span> </span><span id="span_204_3435">Bool</span><span> </span><span class="keyword" id="span_204_3436">given</span><span> </span><span class="symbol" id="span_204_3438">(</span><span id="span_204_3439">n</span><span class="symbol" id="span_204_3440">|</span><span id="span_204_3442">Ix</span><span class="symbol" id="span_204_3443">,</span><span> </span><span id="span_204_3444">eff</span><span class="symbol" id="span_204_3445">)</span><span> </span><span class="symbol" id="span_204_3446">=</span><span class="comment">
+  </span><span id="span_204_3449">iter</span><span> </span><span class="symbol" id="span_204_3452">\</span><span id="span_204_3453">ct</span><span class="symbol" id="span_204_3454">.</span><span class="comment">
+    </span><span class="keyword" id="span_204_3458">if</span><span> </span><span id="span_204_3459">ct</span><span> </span><span class="symbol" id="span_204_3460">&gt;=</span><span> </span><span id="span_204_3462">size</span><span> </span><span id="span_204_3464">n</span><span class="comment">
+      </span><span class="keyword" id="span_204_3465">then</span><span> </span><span id="span_204_3466">Done</span><span> </span><span id="span_204_3468">False</span><span class="comment">
+      </span><span class="keyword" id="span_204_3469">else</span><span> </span><span class="keyword" id="span_204_3471">if</span><span> </span><span id="span_204_3472">f</span><span> </span><span class="symbol" id="span_204_3475">(</span><span id="span_204_3476">ct</span><span> </span><span class="symbol" id="span_204_3477">@</span><span> </span><span id="span_204_3479">n</span><span class="symbol" id="span_204_3480">)</span><span> </span><span class="keyword" id="span_204_3481">then</span><span> </span><span id="span_204_3482">Done</span><span> </span><span id="span_204_3484">True</span><span> </span><span class="keyword" id="span_204_3485">else</span><span> </span><span id="span_204_3486">Continue</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>And now that this basically works, we can package the whole thing up
+as a simulation.  We have another trick here: we compute the neighbor
+list with an extra &quot;halo&quot;, treating atoms as neighbors if they are
+distance <code>1 + halo</code> from each other, rather than just the interaction
+range 1.  This way, we only have to recompute the neighbor list when
+some atom moves more than <code>halo/2</code> away from where it was when the
+neighbor list is computed, because otherwise it remains a sound
+approximation.</p>
+</div>
+<div class="code-block"><span class="comment"># TODO(Issue 1133) Can&#39;t use scan with a body that has an effect?
+</span></div>
+<div class="code-block"><span class="keyword" id="span_208_3488">def</span><span> </span><span id="span_208_3489">simulate</span><span class="symbol" id="span_208_3491">(</span><span class="comment">
+    </span><span id="span_208_3492">displacement</span><span> </span><span class="symbol" id="span_208_3493">:</span><span> </span><span id="span_208_3495">Displacement</span><span> </span><span id="span_208_3497">TwoDimensions</span><span class="symbol" id="span_208_3498">,</span><span class="comment">
+    </span><span id="span_208_3499">halo_size</span><span class="symbol" id="span_208_3500">,</span><span class="comment">
+    </span><span id="span_208_3501">L</span><span class="symbol" id="span_208_3502">,</span><span class="comment">
+    </span><span id="span_208_3503">time</span><span class="symbol" id="span_208_3504">|</span><span id="span_208_3506">Ix</span><span class="symbol" id="span_208_3507">,</span><span class="comment">
+    </span><span id="span_208_3508">state</span><span> </span><span class="symbol" id="span_208_3509">:</span><span> </span><span id="span_208_3511">FireDescentState</span><span class="symbol" id="span_208_3514">(</span><span id="span_208_3515">atom_ix</span><span class="symbol" id="span_208_3516">,</span><span> </span><span id="span_208_3517">TwoDimensions</span><span class="symbol" id="span_208_3518">)</span><span class="comment">
+    </span><span class="symbol" id="span_208_3519">)</span><span> </span><span class="symbol" id="span_208_3520">-&gt;</span><span> </span><span class="symbol" id="span_208_3522">{</span><span id="span_208_3523">IO</span><span class="symbol" id="span_208_3524">}</span><span> </span><span class="symbol" id="span_208_3526">(</span><span id="span_208_3527">FireDescentState</span><span class="symbol" id="span_208_3530">(</span><span id="span_208_3531">atom_ix</span><span class="symbol" id="span_208_3532">,</span><span> </span><span id="span_208_3533">TwoDimensions</span><span class="symbol" id="span_208_3534">)</span><span class="symbol" id="span_208_3535">,</span><span> </span><span id="span_208_3536">time</span><span> </span><span class="symbol" id="span_208_3537">=&gt;</span><span> </span><span id="span_208_3539">Float</span><span class="symbol" id="span_208_3540">)</span><span> </span><span class="keyword" id="span_208_3541">given</span><span> </span><span class="symbol" id="span_208_3543">(</span><span id="span_208_3544">atom_ix</span><span class="symbol" id="span_208_3545">|</span><span id="span_208_3547">Ix</span><span class="symbol" id="span_208_3548">)</span><span> </span><span class="symbol" id="span_208_3549">=</span><span class="comment">
+  </span><span id="span_208_3552">with_state</span><span> </span><span id="span_208_3554">state</span><span class="symbol" id="span_208_3556">.</span><span id="span_208_3557">R</span><span> </span><span class="symbol" id="span_208_3560">\</span><span id="span_208_3561">saved_atoms_ref</span><span class="symbol" id="span_208_3562">.</span><span class="comment">
+    </span><span id="span_208_3565">nbrs</span><span> </span><span class="symbol" id="span_208_3566">=</span><span> </span><span id="span_208_3567">just_neighbor_list</span><span> </span><span class="symbol" id="span_208_3570">(</span><span class="literal" id="span_208_3571">1.0</span><span> </span><span class="symbol" id="span_208_3572">+</span><span> </span><span id="span_208_3574">halo_size</span><span class="symbol" id="span_208_3575">)</span><span> </span><span id="span_208_3577">L</span><span> </span><span class="symbol" id="span_208_3578">$</span><span> </span><span id="span_208_3580">state</span><span class="symbol" id="span_208_3582">.</span><span id="span_208_3583">R</span><span class="comment">
+    </span><span id="span_208_3585">AsList</span><span class="symbol" id="span_208_3588">(</span><span id="span_208_3589">k</span><span class="symbol" id="span_208_3590">,</span><span> </span><span class="symbol" id="span_208_3592">_</span><span class="symbol" id="span_208_3593">)</span><span> </span><span class="symbol" id="span_208_3594">=</span><span> </span><span id="span_208_3595">nbrs</span><span class="comment">
+    </span><span id="span_208_3597">print</span><span> </span><span class="symbol" id="span_208_3598">$</span><span> </span><span id="span_208_3600">show</span><span> </span><span id="span_208_3602">k</span><span> </span><span class="symbol" id="span_208_3603">&lt;&gt;</span><span> </span><span id="span_208_3605">&quot; initial neighbor list size&quot;</span><span class="comment">
+    </span><span id="span_208_3607">with_state</span><span> </span><span id="span_208_3609">nbrs</span><span> </span><span class="symbol" id="span_208_3612">\</span><span id="span_208_3613">saved_neighbors_ref</span><span class="symbol" id="span_208_3614">.</span><span class="comment">
+      </span><span id="span_208_3617">swap</span><span> </span><span class="symbol" id="span_208_3618">$</span><span> </span><span id="span_208_3620">run_state</span><span> </span><span id="span_208_3622">state</span><span> </span><span class="symbol" id="span_208_3625">\</span><span id="span_208_3626">s_ref</span><span class="symbol" id="span_208_3627">.</span><span> </span><span class="keyword" id="span_208_3629">for</span><span> </span><span id="span_208_3630">i</span><span class="symbol" id="span_208_3631">.</span><span class="comment">
+        </span><span id="span_208_3634">s</span><span> </span><span class="symbol" id="span_208_3635">=</span><span> </span><span id="span_208_3636">get</span><span> </span><span id="span_208_3638">s_ref</span><span class="comment">
+        </span><span id="span_208_3640">new_atoms</span><span> </span><span class="symbol" id="span_208_3641">=</span><span> </span><span id="span_208_3642">s</span><span class="symbol" id="span_208_3644">.</span><span id="span_208_3645">R</span><span class="comment">
+        </span><span id="span_208_3647">rebuild</span><span> </span><span class="symbol" id="span_208_3648">=</span><span> </span><span id="span_208_3649">fast_any</span><span> </span><span class="symbol" id="span_208_3652">\</span><span id="span_208_3653">i</span><span class="symbol" id="span_208_3654">.</span><span class="comment">
+          </span><span class="literal" id="span_208_3657">2</span><span> </span><span class="symbol" id="span_208_3658">*</span><span> </span><span id="span_208_3660">norm</span><span> </span><span class="symbol" id="span_208_3663">(</span><span id="span_208_3664">displacement</span><span> </span><span class="symbol" id="span_208_3667">(</span><span id="span_208_3668">get</span><span> </span><span id="span_208_3670">saved_atoms_ref</span><span class="symbol" id="span_208_3671">!</span><span id="span_208_3673">i</span><span class="symbol" id="span_208_3674">)</span><span> </span><span id="span_208_3676">new_atoms</span><span class="symbol" id="span_208_3679">[</span><span id="span_208_3680">i</span><span class="symbol" id="span_208_3681">]</span><span class="symbol" id="span_208_3682">)</span><span> </span><span class="symbol" id="span_208_3683">&gt;</span><span> </span><span id="span_208_3685">halo_size</span><span class="comment">
+        </span><span class="keyword" id="span_208_3688">if</span><span> </span><span id="span_208_3689">rebuild</span><span> </span><span class="keyword" id="span_208_3690">then</span><span class="comment">
+          </span><span id="span_208_3693">saved_atoms_ref</span><span> </span><span class="symbol" id="span_208_3694">:=</span><span> </span><span id="span_208_3696">new_atoms</span><span class="comment">
+          </span><span id="span_208_3698">nbrs</span><span> </span><span class="symbol" id="span_208_3699">=</span><span> </span><span id="span_208_3700">just_neighbor_list</span><span> </span><span class="symbol" id="span_208_3703">(</span><span class="literal" id="span_208_3704">1.0</span><span> </span><span class="symbol" id="span_208_3705">+</span><span> </span><span id="span_208_3707">halo_size</span><span class="symbol" id="span_208_3708">)</span><span> </span><span id="span_208_3710">L</span><span> </span><span id="span_208_3712">new_atoms</span><span class="comment">
+          </span><span id="span_208_3714">saved_neighbors_ref</span><span> </span><span class="symbol" id="span_208_3715">:=</span><span> </span><span id="span_208_3717">nbrs</span><span class="comment">
+          </span><span id="span_208_3719">AsList</span><span class="symbol" id="span_208_3722">(</span><span id="span_208_3723">k</span><span class="symbol" id="span_208_3724">,</span><span> </span><span class="symbol" id="span_208_3726">_</span><span class="symbol" id="span_208_3727">)</span><span> </span><span class="symbol" id="span_208_3728">=</span><span> </span><span id="span_208_3729">nbrs</span><span class="comment">
+          </span><span id="span_208_3731">print</span><span> </span><span class="symbol" id="span_208_3732">$</span><span> </span><span id="span_208_3734">show</span><span> </span><span id="span_208_3736">k</span><span> </span><span class="symbol" id="span_208_3737">&lt;&gt;</span><span> </span><span id="span_208_3739">&quot; new neighbor list size&quot;</span><span class="comment">
+        </span><span id="span_208_3741">nbrs</span><span> </span><span class="symbol" id="span_208_3742">=</span><span> </span><span id="span_208_3743">get</span><span> </span><span id="span_208_3745">saved_neighbors_ref</span><span class="comment">
+        </span><span id="span_208_3747">s&#39;</span><span> </span><span class="symbol" id="span_208_3748">=</span><span> </span><span id="span_208_3749">fire_descent_step</span><span> </span><span class="symbol" id="span_208_3752">(</span><span id="span_208_3753">periodic_shift</span><span> </span><span id="span_208_3755">L</span><span class="symbol" id="span_208_3756">)</span><span> </span><span class="symbol" id="span_208_3759">(</span><span id="span_208_3760">energy_nl</span><span> </span><span id="span_208_3762">L</span><span> </span><span id="span_208_3764">nbrs</span><span class="symbol" id="span_208_3765">)</span><span> </span><span id="span_208_3767">s</span><span class="comment">
+        </span><span id="span_208_3769">s_ref</span><span> </span><span class="symbol" id="span_208_3770">:=</span><span> </span><span id="span_208_3772">s&#39;</span><span class="comment">
+        </span><span id="span_208_3774">energy_nl</span><span class="symbol" id="span_208_3777">(</span><span id="span_208_3778">L</span><span class="symbol" id="span_208_3779">,</span><span> </span><span id="span_208_3780">nbrs</span><span class="symbol" id="span_208_3781">)</span><span class="symbol" id="span_208_3784">(</span><span id="span_208_3785">s&#39;</span><span class="symbol" id="span_208_3787">.</span><span id="span_208_3788">R</span><span class="symbol" id="span_208_3789">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Let's check that it works on our test system from before</p>
+</div>
+<div class="code-block">%time
+(state_nl&#39;, energies_nl) =
+  unsafe_io \. simulate (periodic_displacement L_small) 0.5 L_small (Fin 100) state_small
+&gt; 4568 initial neighbor list size
+&gt; 4614 new neighbor list size
+&gt; 4564 new neighbor list size
+&gt; 4376 new neighbor list size
+&gt; 4346 new neighbor list size
+&gt; 4266 new neighbor list size
+&gt; 4178 new neighbor list size
+&gt; 4140 new neighbor list size
+&gt; 4100 new neighbor list size
+&gt; 4028 new neighbor list size
+&gt; 4006 new neighbor list size
+&gt; 3922 new neighbor list size
+&gt; 3868 new neighbor list size
+&gt; 3810 new neighbor list size
+&gt; 3762 new neighbor list size
+&gt; 3720 new neighbor list size
+&gt; 3656 new neighbor list size
+&gt; 3640 new neighbor list size
+&gt; 3602 new neighbor list size
+&gt; 3572 new neighbor list size
+&gt; 3554 new neighbor list size
+&gt;
+&gt; Compile time: 1.768 s
+&gt; Run time:     17.954 ms
+
+</div><div class="err-result">575:6:
+    |
+575 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="code-block">%time
+:html show_plot $ y_plot energies_nl
+&gt; &lt;html output&gt;
+&gt;
+&gt; Compile time: 738.194 ms
+&gt; Run time:     3.072 ms
+
+</div><div class="err-result">603:6:
+    |
+603 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="code-block">%time
+:html render_svg (draw_system 0.5 state_nl&#39;.R) (Point(0.0, 0.0), Point(L_small, L_small))
+&gt; &lt;html output&gt;
+&gt;
+&gt; Compile time: 327.153 ms
+&gt; Run time:     14.981 ms
+
+</div><div class="err-result">610:6:
+    |
+610 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>But of course the point of the exercise is that this now scales up to
+larger systems because it avoids the quadratic energy computation.</p>
+</div>
+<div class="code-block"><span id="span_215_3791">N_large</span><span> </span><span class="symbol" id="span_215_3792">=</span><span> </span><span class="keyword" id="span_215_3794">if</span><span> </span><span id="span_215_3795">not</span><span> </span><span class="symbol" id="span_215_3798">(</span><span id="span_215_3799">dex_test_mode</span><span class="symbol" id="span_215_3802">(</span><span class="symbol" id="span_215_3803">)</span><span class="symbol" id="span_215_3804">)</span><span> </span><span class="keyword" id="span_215_3805">then</span><span> </span><span class="literal" id="span_215_3806">50000</span><span> </span><span class="keyword" id="span_215_3807">else</span><span> </span><span class="literal" id="span_215_3808">500</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_216_3810">L_large</span><span> </span><span class="symbol" id="span_216_3811">=</span><span> </span><span id="span_216_3812">box_size_at_number_density</span><span> </span><span class="symbol" id="span_216_3815">(</span><span id="span_216_3816">n_to_i</span><span> </span><span id="span_216_3818">N_large</span><span class="symbol" id="span_216_3819">)</span><span> </span><span class="literal" id="span_216_3821">1.2</span><span> </span><span class="symbol" id="span_216_3824">(</span><span id="span_216_3825">n_to_i</span><span> </span><span id="span_216_3827">d</span><span class="symbol" id="span_216_3828">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_217_3830">L_large</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block"><span id="span_219_3832">R_init_large</span><span> </span><span class="symbol" id="span_219_3833">=</span><span> </span><span id="span_219_3834">rand_mat</span><span> </span><span id="span_219_3836">N_large</span><span> </span><span id="span_219_3838">d</span><span> </span><span class="symbol" id="span_219_3841">(</span><span class="symbol" id="span_219_3843">\</span><span id="span_219_3844">k</span><span class="symbol" id="span_219_3845">.</span><span> </span><span id="span_219_3846">L_large</span><span> </span><span class="symbol" id="span_219_3847">*</span><span> </span><span id="span_219_3849">rand</span><span> </span><span id="span_219_3851">k</span><span class="symbol" id="span_219_3852">)</span><span> </span><span class="symbol" id="span_219_3855">(</span><span id="span_219_3856">new_key</span><span> </span><span class="literal" id="span_219_3858">0</span><span class="symbol" id="span_219_3859">)</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="prose-block"><p>Initial state (we render the atoms smaller now so they don't over-plot too badly).</p>
+</div>
+<div class="code-block">%time
+:html render_svg (draw_system 0.2 R_init_large) (Point(0.0, 0.0), Point(L_large, L_large))
+&gt; &lt;html output&gt;
+&gt;
+&gt; Compile time: 302.700 ms
+&gt; Run time:     16.298 ms
+
+</div><div class="err-result">629:6:
+    |
+629 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="code-block"><span id="span_223_3861">state_large</span><span> </span><span class="symbol" id="span_223_3862">=</span><span class="comment">
+  </span><span id="span_223_3865">energy_func</span><span> </span><span class="symbol" id="span_223_3866">=</span><span> </span><span class="symbol" id="span_223_3868">(</span><span id="span_223_3869">energy_nl</span><span> </span><span id="span_223_3871">L_large</span><span> </span><span class="symbol" id="span_223_3872">$</span><span> </span><span id="span_223_3874">just_neighbor_list</span><span> </span><span class="literal" id="span_223_3876">1.0</span><span> </span><span id="span_223_3878">L_large</span><span> </span><span id="span_223_3880">R_init_large</span><span class="symbol" id="span_223_3881">)</span><span class="comment">
+  </span><span id="span_223_3883">fire_descent_init</span><span> </span><span class="literal" id="span_223_3885">0.1</span><span> </span><span class="literal" id="span_223_3887">0.1</span><span> </span><span id="span_223_3889">energy_func</span><span> </span><span id="span_223_3891">R_init_large</span><span class="comment">
+</span></div>
+<div class="code-block"><span class="comment">
+</span></div>
+<div class="code-block">%time
+(state_large_nl&#39;, energies_large_nl) =
+  unsafe_io \. simulate (periodic_displacement L_large) 0.5 L_large (Fin 100) state_large
+&gt; 4568 initial neighbor list size
+&gt; 4614 new neighbor list size
+&gt; 4564 new neighbor list size
+&gt; 4376 new neighbor list size
+&gt; 4346 new neighbor list size
+&gt; 4266 new neighbor list size
+&gt; 4178 new neighbor list size
+&gt; 4140 new neighbor list size
+&gt; 4100 new neighbor list size
+&gt; 4028 new neighbor list size
+&gt; 4006 new neighbor list size
+&gt; 3922 new neighbor list size
+&gt; 3868 new neighbor list size
+&gt; 3810 new neighbor list size
+&gt; 3762 new neighbor list size
+&gt; 3720 new neighbor list size
+&gt; 3656 new neighbor list size
+&gt; 3640 new neighbor list size
+&gt; 3602 new neighbor list size
+&gt; 3572 new neighbor list size
+&gt; 3554 new neighbor list size
+&gt;
+&gt; Compile time: 1.724 s
+&gt; Run time:     18.361 ms
+
+</div><div class="err-result">640:6:
+    |
+640 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>Energy decrease</p>
+</div>
+<div class="code-block">%time
+:html show_plot $ y_plot energies_large_nl
+&gt; &lt;html output&gt;
+&gt;
+&gt; Compile time: 757.663 ms
+&gt; Run time:     3.450 ms
+
+</div><div class="err-result">670:6:
+    |
+670 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+<div class="prose-block"><p>System state after minimization.</p>
+</div>
+<div class="code-block">%time
+:html render_svg (draw_system 0.2 state_large_nl&#39;.R) (Point(0.0, 0.0), Point(L_large, L_large))
+&gt; &lt;html output&gt;
+&gt;
+&gt; Compile time: 301.748 ms
+&gt; Run time:     15.928 ms
+
+</div><div class="err-result">679:6:
+    |
+679 | %time
+    |      ^
+Unrecognized primitive: time
+</div>
+</body></html>
