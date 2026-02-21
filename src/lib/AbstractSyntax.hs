@@ -435,13 +435,7 @@ expr (WithSrcs sid sids grp) = WithSrcE sid <$> case grp of
         effs' <- fromMaybeM effs UPure aEffects
         resultTy <- expr rhs
         return $ UPi $ UPiExpr bs ExplicitApp effs' resultTy
-      WithSrcs lhsSid _ _ -> do
-        -- Allow non-parenthesized function types like "A -> B" as "(_:A) -> B"
-        lhsTy <- expr lhs
-        let b = UAnnBinder Explicit (WithSrcB lhsSid UIgnore) (UAnn lhsTy) []
-        effs' <- fromMaybeM effs UPure aEffects
-        resultTy <- expr rhs
-        return $ UPi $ UPiExpr (UnaryNest b) ExplicitApp effs' resultTy
+      WithSrcs lhsSid _ _ -> throw lhsSid ArgsShouldHaveParens
   CDo b -> UDo <$> block b
   CJuxtapose hasSpace lhs rhs -> case hasSpace of
     True -> extendAppRight <$> expr lhs <*> expr rhs
@@ -483,11 +477,7 @@ expr (WithSrcs sid sids grp) = WithSrcE sid <$> case grp of
         bs <- aPiBinders gs
         resultTy <- expr rhs
         return $ UPi $ UPiExpr bs ImplicitApp UPure resultTy
-      WithSrcs lhsSid _ _ -> do
-        lhsTy <- expr lhs
-        let b = UAnnBinder Explicit (WithSrcB lhsSid UIgnore) (UAnn lhsTy) []
-        resultTy <- expr rhs
-        return $ UPi $ UPiExpr (UnaryNest b) ImplicitApp UPure resultTy
+      WithSrcs lhsSid _ _ -> throw lhsSid ArgsShouldHaveParens
     FatArrow      -> do
       lhs' <- tyOptPat lhs
       UTabPi . (UTabPiExpr lhs') <$> expr rhs
