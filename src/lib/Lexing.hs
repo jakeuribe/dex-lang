@@ -230,7 +230,7 @@ sc = (skipSome s >> recordWhitespace) <|> return ()
   where s = hidden space <|> hidden lineComment
 
 lineComment :: Parser ()
-lineComment = string "#" >> void (takeWhileP (Just "char") (/= '\n'))
+lineComment = try (char '#' >> notFollowedBy (char '"')) >> void (takeWhileP (Just "char") (/= '\n'))
 
 outputLines :: Parser ()
 outputLines = void $ many (symbol ">" >> takeWhileP Nothing (/= '\n') >> ((eol >> return ()) <|> eof))
