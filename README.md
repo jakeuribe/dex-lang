@@ -190,4 +190,4 @@ and use `make` to use Stack to build Dex.
 
 BSD-3
 
-This is an early-stage research project, not an official Google product.
+This is an early-stage recovery of an open-source deprecated Google research project, I am in no way presently or formerly affiliated with Google.
