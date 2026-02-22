@@ -82,15 +82,14 @@ squared = for i:(Fin 5). xs[i] * xs[i]
 -- Lambdas (anonymous functions)
 -- =====================
 
--- Without type annotation (inferred)
-double = \x. x * 2.0
-:p double 5.0
+-- Lambdas work inline / inside :p blocks
+:p
+  double = \x. x * 2.0
+  double 5.0
 > 10.
 
--- With type annotation: arg types must be in parens!
--- WRONG:  double2 : Float -> Float = ...
--- RIGHT:  double2 : (Float) -> Float = ...
-double2 : (Float) -> Float = \x. x * 2.0
+-- At top level, prefer `def` syntax
+def double2(x: Float) -> Float = x * 2.0
 :p double2 7.0
 > 14.
 
