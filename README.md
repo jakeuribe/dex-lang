@@ -4,6 +4,8 @@ Dex (named for "index") is a research language for typed, functional array
 processing. This is a personal fork of [google-research/dex-lang](https://github.com/google-research/dex-lang)
 focused on reviving and modernizing the project.
 
+I am new to open source projects, if you contributed to the original project and don't think I am properly crediting the work, please let me know so I can ensure I am properly citing it. Over time this will contain more of my own content and less of the original.
+
 The goal of the project is to explore:
 
   * Type systems for array programming
