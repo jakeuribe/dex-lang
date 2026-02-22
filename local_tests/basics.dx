@@ -1,0 +1,146 @@
+-- basics.dx — Simple Dex building blocks
+
+-- =====================
+-- Scalars and arithmetic
+-- =====================
+
+:p 1.0 + 2.0
+> 3.
+
+:p 6.0 - 10.0
+> -4.
+
+:p 3.0 * 4.0
+> 12.
+
+-- =====================
+-- Defining arrays (tables)
+-- =====================
+
+-- A 1D array of 5 floats using `for`
+xs = for i:(Fin 5). n_to_f (ordinal i)
+:p xs
+> [0., 1., 2., 3., 4.]
+
+-- `iota` is a shortcut: gives [0, 1, 2, ..., n-1] as Nats
+:p iota (Fin 5)
+> [0, 1, 2, 3, 4]
+
+-- =====================
+-- Index types (dimensions)
+-- =====================
+
+-- Type aliases give names to dimensions
+Height = Fin 3
+Width  = Fin 4
+
+-- A 2D matrix: 3 rows x 4 columns
+mat : Height => Width => Float = for i. for j.
+  n_to_f (ordinal i * 4 + ordinal j)
+
+:p mat
+> [[0., 1., 2., 3.], [4., 5., 6., 7.], [8., 9., 10., 11.]]
+
+-- =====================
+-- Indexing into arrays
+-- =====================
+
+:p mat[0@Height, 2@Width]
+> 2.
+
+:p xs[3@(Fin 5)]
+> 3.
+
+-- =====================
+-- Map and element-wise ops
+-- =====================
+
+-- Double every element
+doubled = for i:(Fin 5). xs[i] * 2.0
+:p doubled
+> [0., 2., 4., 6., 8.]
+
+-- Square every element
+squared = for i:(Fin 5). xs[i] * xs[i]
+:p squared
+> [0., 1., 4., 9., 16.]
+
+-- =====================
+-- Reductions: sum, product, mean
+-- =====================
+
+:p sum xs
+> 10.
+
+:p sum for i. mat[i, 0@Width]
+> 12.
+
+:p mean xs
+> 2.
+
+-- =====================
+-- Lambdas (anonymous functions)
+-- =====================
+
+double = \x. x * 2.0
+:p double 5.0
+> 10.
+
+-- =====================
+-- Named functions with type signatures
+-- =====================
+
+def dot(a: n=>Float, b: n=>Float) -> Float given (n|Ix) =
+  sum for i. a[i] * b[i]
+
+v1 = for i:(Fin 3). n_to_f (ordinal i + 1)   -- [1, 2, 3]
+v2 = for i:(Fin 3). n_to_f (ordinal i + 1)   -- [1, 2, 3]
+:p dot v1 v2
+> 14.
+
+-- =====================
+-- Matrix-vector multiply
+-- =====================
+
+def matvec(M: m=>n=>Float, v: n=>Float) -> m=>Float given (m|Ix, n|Ix) =
+  for i. sum for j. M[i, j] * v[j]
+
+small_mat : (Fin 2) => (Fin 3) => Float = for i. for j.
+  n_to_f (ordinal i * 3 + ordinal j + 1)
+-- [[1, 2, 3], [4, 5, 6]]
+
+small_vec : (Fin 3) => Float = [1.0, 1.0, 1.0]
+
+:p matvec small_mat small_vec
+> [6., 15.]
+
+-- =====================
+-- Conditionals with select
+-- =====================
+
+:p select (3.0 > 2.0) 100.0 0.0
+> 100.
+
+-- Identity-like matrix using select
+eye : (Fin 3) => (Fin 3) => Float = for i j.
+  select (ordinal i == ordinal j) 1.0 0.0
+
+:p eye
+> [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]
+
+-- =====================
+-- Tuples and destructuring
+-- =====================
+
+:p
+  (x, y) = (3.0, 4.0)
+  sqrt (x * x + y * y)
+> 5.
+
+-- =====================
+-- Fold (sequential accumulation)
+-- =====================
+
+-- Factorial of 5 via fold
+:p fold 1 \i:(Fin 5) acc. acc * (ordinal i + 1)
+> 120
